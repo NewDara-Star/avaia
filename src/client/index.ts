@@ -240,6 +240,25 @@ const command = process.argv[2];
 
 if (command === 'init') {
     init().catch(console.error);
+} else if (command === 'seed') {
+    // Dynamic import to avoid loading seed data unless needed
+    import('../server/seed.js').then(({ seed }) => {
+        seed().catch(console.error);
+    });
+} else if (command === 'help' || command === '--help' || command === '-h') {
+    console.log(`
+Avaia - Proactive AI Programming Teacher
+
+Usage: avaia <command>
+
+Commands:
+  init    Initialize ~/.avaia directory with system prompt
+  seed    Seed the database with curriculum (concepts, sandboxes, etc.)
+  help    Show this help message
+
+Without a command, starts an interactive learning session.
+`);
 } else {
     main().catch(console.error);
 }
+

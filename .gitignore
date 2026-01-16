@@ -1,0 +1,12 @@
+node_modules/
+dist/
+*.log
+.DS_Store
+
+# Local data (user's learning state)
+data/
+~/.avaia/
+
+# Research and internal docs (not needed for package)
+research/
+docs/

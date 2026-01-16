@@ -5,7 +5,7 @@
   "type": "module",
   "main": "dist/server/index.js",
   "bin": {
-    "avaia": "./dist/client/index.js"
+    "avaia": "dist/client/index.js"
   },
   "scripts": {
     "build": "tsc",
@@ -34,7 +34,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/yourusername/avaia"
+    "url": "git+https://github.com/NewDara-Star/avaia.git"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.0.0",

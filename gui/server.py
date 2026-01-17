@@ -99,11 +99,19 @@ def stream_response(process, client_sid):
         socketio.emit('response_complete', {}, room=client_sid)
 
 
-def send_message(message, client_sid):
+def send_message(message, client_sid, learner_id=None, model=None):
     """Send a message to Claude and stream the response"""
     global session_id, current_process
 
     claude_path = find_claude_code()
+
+    # Map model names to Claude Code model flags
+    model_map = {
+        'sonnet': 'sonnet',
+        'opus': 'opus',
+        'haiku': 'haiku'
+    }
+    selected_model = model_map.get(model, 'sonnet')
 
     # Load Avaia system prompt from ~/.avaia/system-prompt.md
     prompt_file = os.path.expanduser('~/.avaia/system-prompt.md')
@@ -113,12 +121,18 @@ def send_message(message, client_sid):
     except:
         avaia_prompt = "You are Avaia, an AI programming tutor. Use the Avaia MCP tools for session management and learning tracking."
 
+    # Inject learner ID into the system prompt if provided
+    if learner_id:
+        learner_context = f"\n\n## Current Learner\n\nThe current learner's ID is: `{learner_id}`\n\nUse this ID when calling any MCP tools that require a learner_id parameter (start_session, get_project_state, get_hint, etc.).\n"
+        avaia_prompt = avaia_prompt + learner_context
+
     # Build command
     cmd = [
         claude_path,
         '--print',
         '--output-format', 'stream-json',
         '--verbose',
+        '--model', selected_model,
         '--permission-mode', 'bypassPermissions',
         '--append-system-prompt', avaia_prompt,
     ]
@@ -171,7 +185,7 @@ def index():
 def handle_connect():
     print(f"Client connected: {request.sid if 'request' in dir() else 'unknown'}")
     emit('status', {'connected': True})
-    emit('output', {'data': 'Welcome to Avaia! Type a message to start learning.\n\n'})
+    # Don't emit output here - let the welcome screen show instead
 
 
 @socketio.on('disconnect')
@@ -183,8 +197,31 @@ def handle_disconnect():
 def handle_input(data):
     from flask import request
     message = data.get('message', '').strip()
+    learner_id = data.get('learner_id', '').strip()
+    model = data.get('model', 'sonnet').strip()
     if message:
-        send_message(message, request.sid)
+        send_message(
+            message,
+            request.sid,
+            learner_id=learner_id if learner_id else None,
+            model=model
+        )
+
+
+@socketio.on('end_session')
+def handle_end_session(data):
+    """Handle ending a session - calls the MCP end_session tool"""
+    from flask import request
+
+    learner_id = data.get('learner_id', '').strip()
+    session_summary = data.get('session_summary', '')
+
+    if learner_id and session_id:
+        # Send a message to Claude to call end_session
+        end_message = f"Please call the end_session MCP tool now with learner_id '{learner_id}' and include these session notes: {session_summary}"
+        send_message(end_message, request.sid, learner_id=learner_id, model='haiku')
+
+    print(f"Session ended for learner: {learner_id}")
 
 
 @socketio.on('restart')
@@ -204,7 +241,6 @@ def handle_restart():
     session_id = None
 
     emit('status', {'connected': True, 'restarted': True})
-    emit('output', {'data': 'Session restarted. Type a message to begin.\n\n'})
 
 
 def open_browser():

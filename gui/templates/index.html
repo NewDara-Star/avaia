@@ -34,18 +34,38 @@
                     New chat
                 </button>
             </div>
-            <div class="sidebar-content">
-                <div class="sidebar-section">
-                    <span class="sidebar-label">Today</span>
-                    <div class="chat-history-item active">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                            stroke-width="1.5">
-                            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-                        </svg>
-                        <span>Current Session</span>
+            <div class="sidebar-content" id="chatHistoryContainer">
+                <!-- Chat history will be rendered here by JavaScript -->
+            </div>
+
+            <!-- Learner Settings -->
+            <div class="sidebar-settings">
+                <div class="settings-section">
+                    <label class="settings-label" for="learnerIdInput">Learner ID</label>
+                    <div class="settings-input-wrapper">
+                        <input
+                            type="text"
+                            id="learnerIdInput"
+                            class="settings-input"
+                            placeholder="learner_xxxxx"
+                            spellcheck="false"
+                        >
+                        <span class="settings-saved" id="savedIndicator">Saved</span>
                     </div>
+                    <p class="settings-hint">Your ID persists across sessions</p>
+                </div>
+
+                <div class="settings-section" style="margin-top: 16px;">
+                    <label class="settings-label" for="modelSelect">Model</label>
+                    <select id="modelSelect" class="settings-select">
+                        <option value="sonnet">Claude Sonnet</option>
+                        <option value="opus">Claude Opus</option>
+                        <option value="haiku">Claude Haiku</option>
+                    </select>
+                    <p class="settings-hint">Opus is smartest, Haiku is fastest</p>
                 </div>
             </div>
+
             <div class="sidebar-footer">
                 <div class="status-indicator" id="status">
                     <span class="status-dot"></span>
@@ -147,11 +167,319 @@
         const statusEl = document.getElementById('status');
         const menuToggle = document.getElementById('menuToggle');
         const sidebar = document.querySelector('.sidebar');
+        const chatHistoryContainer = document.getElementById('chatHistoryContainer');
 
         let currentResponse = null;
         let outputBuffer = '';
         let renderTimeout = null;
         let isWaiting = false;
+        let currentSessionId = null;
+        let currentSessionMessages = [];
+
+        // ============================================
+        // Session History Management
+        // ============================================
+
+        function generateSessionId() {
+            return 'session_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+        }
+
+        function getSessionHistory() {
+            try {
+                return JSON.parse(localStorage.getItem('avaia_session_history') || '[]');
+            } catch {
+                return [];
+            }
+        }
+
+        function saveSessionHistory(history) {
+            localStorage.setItem('avaia_session_history', JSON.stringify(history));
+        }
+
+        function getCurrentSession() {
+            return {
+                id: currentSessionId,
+                messages: currentSessionMessages,
+                startedAt: currentSessionMessages[0]?.timestamp || Date.now(),
+                title: generateSessionTitle()
+            };
+        }
+
+        function generateSessionTitle() {
+            // Use first user message as title, or default
+            const firstUserMsg = currentSessionMessages.find(m => m.role === 'user');
+            if (firstUserMsg) {
+                const title = firstUserMsg.content.slice(0, 50);
+                return title.length < firstUserMsg.content.length ? title + '...' : title;
+            }
+            return 'New Session';
+        }
+
+        function saveCurrentSession() {
+            if (currentSessionMessages.length === 0) return null;
+
+            const session = getCurrentSession();
+            const history = getSessionHistory();
+
+            // Check if session already exists, update it
+            const existingIndex = history.findIndex(s => s.id === session.id);
+            if (existingIndex >= 0) {
+                history[existingIndex] = session;
+            } else {
+                history.unshift(session); // Add to beginning
+            }
+
+            // Keep only last 50 sessions
+            if (history.length > 50) {
+                history.pop();
+            }
+
+            saveSessionHistory(history);
+            renderChatHistory();
+            return session;
+        }
+
+        function addMessageToSession(role, content) {
+            currentSessionMessages.push({
+                role,
+                content,
+                timestamp: Date.now()
+            });
+            // Auto-save periodically
+            if (currentSessionMessages.length % 2 === 0) {
+                saveCurrentSession();
+            }
+        }
+
+        function startNewSession() {
+            currentSessionId = generateSessionId();
+            currentSessionMessages = [];
+        }
+
+        function deleteSession(sessionId) {
+            const history = getSessionHistory();
+            const filtered = history.filter(s => s.id !== sessionId);
+            saveSessionHistory(filtered);
+            renderChatHistory();
+        }
+
+        function formatRelativeDate(timestamp) {
+            const now = new Date();
+            const date = new Date(timestamp);
+            const diffDays = Math.floor((now - date) / (1000 * 60 * 60 * 24));
+
+            if (diffDays === 0) return 'Today';
+            if (diffDays === 1) return 'Yesterday';
+            if (diffDays < 7) return 'Previous 7 Days';
+            if (diffDays < 30) return 'Previous 30 Days';
+            return 'Older';
+        }
+
+        function renderChatHistory() {
+            const history = getSessionHistory();
+
+            if (history.length === 0) {
+                chatHistoryContainer.innerHTML = `
+                    <div class="sidebar-section">
+                        <span class="sidebar-label">No History</span>
+                        <p class="history-empty">Your chat sessions will appear here</p>
+                    </div>
+                `;
+                return;
+            }
+
+            // Group by relative date
+            const groups = {};
+            history.forEach(session => {
+                const group = formatRelativeDate(session.startedAt);
+                if (!groups[group]) groups[group] = [];
+                groups[group].push(session);
+            });
+
+            let html = '';
+            const groupOrder = ['Today', 'Yesterday', 'Previous 7 Days', 'Previous 30 Days', 'Older'];
+
+            for (const group of groupOrder) {
+                if (!groups[group]) continue;
+
+                html += `<div class="sidebar-section">
+                    <span class="sidebar-label">${group}</span>`;
+
+                for (const session of groups[group]) {
+                    const isActive = session.id === currentSessionId;
+                    html += `
+                        <div class="chat-history-item ${isActive ? 'active' : ''}" data-session-id="${session.id}">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                            </svg>
+                            <span class="history-title">${escapeHtml(session.title)}</span>
+                            <button class="history-delete" data-session-id="${session.id}" title="Delete">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M18 6L6 18M6 6l12 12"/>
+                                </svg>
+                            </button>
+                        </div>
+                    `;
+                }
+
+                html += `</div>`;
+            }
+
+            chatHistoryContainer.innerHTML = html;
+
+            // Add click handlers
+            chatHistoryContainer.querySelectorAll('.chat-history-item').forEach(item => {
+                item.addEventListener('click', (e) => {
+                    if (e.target.closest('.history-delete')) return;
+                    const sessionId = item.dataset.sessionId;
+                    loadSession(sessionId);
+                });
+            });
+
+            chatHistoryContainer.querySelectorAll('.history-delete').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const sessionId = btn.dataset.sessionId;
+                    if (confirm('Delete this session?')) {
+                        deleteSession(sessionId);
+                    }
+                });
+            });
+        }
+
+        function loadSession(sessionId) {
+            const history = getSessionHistory();
+            const session = history.find(s => s.id === sessionId);
+
+            if (!session) return;
+
+            // Save current session first if it has messages
+            if (currentSessionMessages.length > 0) {
+                saveCurrentSession();
+            }
+
+            // Clear current chat
+            clearChatUI();
+
+            // Load session messages
+            currentSessionId = session.id;
+            currentSessionMessages = session.messages || [];
+
+            // Render messages
+            hideWelcomeScreen();
+            session.messages.forEach(msg => {
+                if (msg.role === 'user') {
+                    createMessageElement('user', msg.content);
+                } else {
+                    const content = createMessageElement('assistant', msg.content);
+                    const messageRow = content.closest('.message-row');
+                    if (messageRow) {
+                        addMessageActions(messageRow);
+                    }
+                }
+            });
+
+            // Show notice that this is a past session
+            const notice = document.createElement('div');
+            notice.className = 'session-notice';
+            notice.innerHTML = `
+                <span>Viewing past session</span>
+                <button onclick="continueSession()">Continue this conversation</button>
+            `;
+            chatContainer.appendChild(notice);
+
+            scrollToBottom();
+            renderChatHistory();
+        }
+
+        function continueSession() {
+            // Remove the notice
+            const notice = document.querySelector('.session-notice');
+            if (notice) notice.remove();
+
+            // Session is already loaded, just allow input
+            // The next message will continue from here
+        }
+
+        function clearChatUI() {
+            // Remove all messages but keep welcome screen
+            const messages = chatContainer.querySelectorAll('.message-row, .session-notice');
+            messages.forEach(m => m.remove());
+        }
+
+        // Initialize session on load
+        startNewSession();
+        renderChatHistory();
+
+        // Learner ID persistence
+        const learnerIdInput = document.getElementById('learnerIdInput');
+        const savedIndicator = document.getElementById('savedIndicator');
+        let saveTimeout = null;
+
+        // Load learner ID from localStorage on page load
+        function loadLearnerId() {
+            const savedId = localStorage.getItem('avaia_learner_id');
+            if (savedId) {
+                learnerIdInput.value = savedId;
+            }
+        }
+
+        // Save learner ID to localStorage with debounce
+        function saveLearnerId() {
+            const learnerId = learnerIdInput.value.trim();
+            if (learnerId) {
+                localStorage.setItem('avaia_learner_id', learnerId);
+                showSavedIndicator();
+            } else {
+                localStorage.removeItem('avaia_learner_id');
+            }
+        }
+
+        function showSavedIndicator() {
+            savedIndicator.classList.add('visible');
+            setTimeout(() => {
+                savedIndicator.classList.remove('visible');
+            }, 2000);
+        }
+
+        // Get current learner ID
+        function getLearnerId() {
+            return learnerIdInput.value.trim() || localStorage.getItem('avaia_learner_id') || '';
+        }
+
+        // Debounced save on input
+        learnerIdInput.addEventListener('input', () => {
+            if (saveTimeout) clearTimeout(saveTimeout);
+            saveTimeout = setTimeout(saveLearnerId, 500);
+        });
+
+        // Save on blur
+        learnerIdInput.addEventListener('blur', saveLearnerId);
+
+        // Load on page load
+        loadLearnerId();
+
+        // Model selection persistence
+        const modelSelect = document.getElementById('modelSelect');
+
+        function loadModelSelection() {
+            const savedModel = localStorage.getItem('avaia_model');
+            if (savedModel) {
+                modelSelect.value = savedModel;
+            }
+        }
+
+        function saveModelSelection() {
+            localStorage.setItem('avaia_model', modelSelect.value);
+            showSavedIndicator();
+        }
+
+        function getSelectedModel() {
+            return modelSelect.value || 'sonnet';
+        }
+
+        modelSelect.addEventListener('change', saveModelSelection);
+        loadModelSelection();
 
         // Voice recognition setup - Whisper WASM via Transformers.js
         const voiceBtn = document.getElementById('voiceBtn');
@@ -348,158 +676,141 @@
             }
         }
 
-        // Text-to-Speech for AI responses - Kokoro-82M neural TTS
-        let ttsPipeline = null;
-        let isLoadingTTS = false;
-        let currentAudio = null;
+        // Text-to-Speech for AI responses - Web Speech API with smart voice selection
+        let currentUtterance = null;
+        let ttsVoices = [];
 
-        async function initTTS() {
-            if (ttsPipeline) return true;
-            if (isLoadingTTS) return false;
-
-            isLoadingTTS = true;
-            console.log('Loading Kokoro TTS model...');
-
-            try {
-                // Wait for Transformers.js
-                let attempts = 0;
-                while (!window.TransformersJS && attempts < 50) {
-                    await new Promise(r => setTimeout(r, 100));
-                    attempts++;
-                }
-
-                if (!window.TransformersJS) {
-                    throw new Error('Transformers.js not loaded');
-                }
-
-                // Use SpeechT5 which is more reliably available
-                ttsPipeline = await window.TransformersJS.pipeline(
-                    'text-to-speech',
-                    'Xenova/speecht5_tts',
-                    {
-                        progress_callback: (progress) => {
-                            if (progress.status === 'progress') {
-                                console.log(`TTS model loading: ${Math.round(progress.progress)}%`);
-                            }
-                        }
-                    }
-                );
-
-                console.log('TTS model ready!');
-                isLoadingTTS = false;
-                return true;
-            } catch (error) {
-                console.error('Failed to load TTS model:', error);
-                isLoadingTTS = false;
-                return false;
-            }
+        // Load voices (they load asynchronously)
+        function loadVoices() {
+            ttsVoices = window.speechSynthesis?.getVoices() || [];
+            console.log(`Loaded ${ttsVoices.length} TTS voices`);
         }
 
-        async function speakText(text) {
-            // Stop any current audio
-            if (currentAudio) {
-                currentAudio.pause();
-                currentAudio = null;
+        // Load voices on init and when they change
+        if ('speechSynthesis' in window) {
+            loadVoices();
+            window.speechSynthesis.onvoiceschanged = loadVoices;
+        }
+
+        // Find the best available voice
+        function getBestVoice() {
+            if (ttsVoices.length === 0) {
+                ttsVoices = window.speechSynthesis?.getVoices() || [];
             }
+
+            // Priority order for natural-sounding voices
+            const preferredVoices = [
+                'Samantha',           // macOS - very natural
+                'Karen',              // macOS Australian
+                'Daniel',             // macOS British
+                'Google UK English Female',
+                'Google UK English Male',
+                'Google US English',
+                'Microsoft Zira',     // Windows
+                'Microsoft David',    // Windows
+            ];
+
+            for (const preferred of preferredVoices) {
+                const voice = ttsVoices.find(v => v.name.includes(preferred));
+                if (voice) return voice;
+            }
+
+            // Fallback: first English voice
+            const englishVoice = ttsVoices.find(v => v.lang.startsWith('en'));
+            if (englishVoice) return englishVoice;
+
+            // Last resort: first available voice
+            return ttsVoices[0] || null;
+        }
+
+        function speakText(text) {
+            // Stop any current speech
             window.speechSynthesis?.cancel();
+            currentUtterance = null;
 
-            // Clean text (remove markdown)
-            const cleanText = text
-                .replace(/```[\s\S]*?```/g, 'code block')
-                .replace(/`([^`]+)`/g, '$1')
-                .replace(/\*\*([^*]+)\*\*/g, '$1')
-                .replace(/\*([^*]+)\*/g, '$1')
-                .replace(/#+\s*/g, '')
-                .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
-                .slice(0, 500); // Limit length for performance
-
-            // Try neural TTS first
-            const ttsReady = await initTTS();
-
-            if (ttsReady) {
-                try {
-                    console.log('Generating speech...');
-                    const result = await ttsPipeline(cleanText, {
-                        speaker_embeddings: 'https://huggingface.co/datasets/Xenova/transformers.js-docs/resolve/main/speaker_embeddings.bin',
-                    });
-
-                    // Convert to audio blob and play
-                    const audioData = result.audio;
-                    const sampleRate = result.sampling_rate;
-
-                    // Create WAV file
-                    const wavBuffer = createWavBuffer(audioData, sampleRate);
-                    const audioBlob = new Blob([wavBuffer], { type: 'audio/wav' });
-                    const audioUrl = URL.createObjectURL(audioBlob);
-
-                    currentAudio = new Audio(audioUrl);
-                    currentAudio.onended = () => {
-                        URL.revokeObjectURL(audioUrl);
-                        currentAudio = null;
-                    };
-                    currentAudio.play();
-                    return;
-                } catch (error) {
-                    console.error('Neural TTS failed, falling back:', error);
-                }
+            if (!('speechSynthesis' in window)) {
+                console.error('Speech synthesis not supported');
+                return;
             }
 
-            // Fallback: Web Speech API
-            if ('speechSynthesis' in window) {
-                const utterance = new SpeechSynthesisUtterance(cleanText);
+            // Clean text (remove markdown formatting)
+            const cleanText = text
+                .replace(/```[\s\S]*?```/g, ' code block ')  // Code blocks
+                .replace(/`([^`]+)`/g, '$1')                  // Inline code
+                .replace(/\*\*([^*]+)\*\*/g, '$1')            // Bold
+                .replace(/\*([^*]+)\*/g, '$1')                // Italic
+                .replace(/_{1,2}([^_]+)_{1,2}/g, '$1')        // Underscores
+                .replace(/#+\s*/g, '')                         // Headers
+                .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')      // Links
+                .replace(/^\s*[-*+]\s+/gm, '')                // List markers
+                .replace(/^\s*\d+\.\s+/gm, '')                // Numbered lists
+                .replace(/\n{2,}/g, '. ')                      // Multiple newlines to pause
+                .replace(/\n/g, ' ')                           // Single newlines to space
+                .replace(/\s+/g, ' ')                          // Collapse whitespace
+                .trim();
+
+            if (!cleanText) return;
+
+            // Split into chunks for long text (prevents cutting off)
+            const maxChunkLength = 200;
+            const chunks = [];
+            let remaining = cleanText;
+
+            while (remaining.length > 0) {
+                if (remaining.length <= maxChunkLength) {
+                    chunks.push(remaining);
+                    break;
+                }
+
+                // Find a good break point (end of sentence or comma)
+                let breakPoint = remaining.lastIndexOf('. ', maxChunkLength);
+                if (breakPoint === -1) breakPoint = remaining.lastIndexOf(', ', maxChunkLength);
+                if (breakPoint === -1) breakPoint = remaining.lastIndexOf(' ', maxChunkLength);
+                if (breakPoint === -1) breakPoint = maxChunkLength;
+
+                chunks.push(remaining.slice(0, breakPoint + 1));
+                remaining = remaining.slice(breakPoint + 1).trim();
+            }
+
+            // Speak chunks sequentially
+            const voice = getBestVoice();
+            let chunkIndex = 0;
+
+            function speakNextChunk() {
+                if (chunkIndex >= chunks.length) {
+                    currentUtterance = null;
+                    return;
+                }
+
+                const utterance = new SpeechSynthesisUtterance(chunks[chunkIndex]);
                 utterance.rate = 1.0;
                 utterance.pitch = 1.0;
+                utterance.volume = 1.0;
 
-                const voices = window.speechSynthesis.getVoices();
-                const preferredVoice = voices.find(v => v.name.includes('Samantha') || v.name.includes('Google'));
-                if (preferredVoice) {
-                    utterance.voice = preferredVoice;
+                if (voice) {
+                    utterance.voice = voice;
                 }
 
+                utterance.onend = () => {
+                    chunkIndex++;
+                    speakNextChunk();
+                };
+
+                utterance.onerror = (e) => {
+                    console.error('TTS error:', e);
+                    currentUtterance = null;
+                };
+
+                currentUtterance = utterance;
                 window.speechSynthesis.speak(utterance);
             }
+
+            speakNextChunk();
         }
 
-        // Helper: Create WAV buffer from audio data
-        function createWavBuffer(audioData, sampleRate) {
-            const numChannels = 1;
-            const bitsPerSample = 16;
-            const bytesPerSample = bitsPerSample / 8;
-            const blockAlign = numChannels * bytesPerSample;
-            const byteRate = sampleRate * blockAlign;
-            const dataSize = audioData.length * bytesPerSample;
-            const buffer = new ArrayBuffer(44 + dataSize);
-            const view = new DataView(buffer);
-
-            // WAV header
-            const writeString = (offset, str) => {
-                for (let i = 0; i < str.length; i++) {
-                    view.setUint8(offset + i, str.charCodeAt(i));
-                }
-            };
-
-            writeString(0, 'RIFF');
-            view.setUint32(4, 36 + dataSize, true);
-            writeString(8, 'WAVE');
-            writeString(12, 'fmt ');
-            view.setUint32(16, 16, true);
-            view.setUint16(20, 1, true);
-            view.setUint16(22, numChannels, true);
-            view.setUint32(24, sampleRate, true);
-            view.setUint32(28, byteRate, true);
-            view.setUint16(32, blockAlign, true);
-            view.setUint16(34, bitsPerSample, true);
-            writeString(36, 'data');
-            view.setUint32(40, dataSize, true);
-
-            // Audio data
-            const offset = 44;
-            for (let i = 0; i < audioData.length; i++) {
-                const sample = Math.max(-1, Math.min(1, audioData[i]));
-                view.setInt16(offset + i * 2, sample * 0x7FFF, true);
-            }
-
-            return buffer;
+        function stopSpeaking() {
+            window.speechSynthesis?.cancel();
+            currentUtterance = null;
         }
 
         // Add event listener for voice button
@@ -569,60 +880,12 @@
             messageRow.appendChild(avatar);
             messageRow.appendChild(messageContent);
 
-            // Add action buttons for assistant messages (copy + speak)
+            // For assistant messages, add a separate actions container that won't be overwritten
             if (type === 'assistant') {
-                const actions = document.createElement('div');
-                actions.className = 'message-actions';
-
-                // Copy button
-                const copyBtn = document.createElement('button');
-                copyBtn.className = 'action-btn';
-                copyBtn.title = 'Copy to clipboard';
-                copyBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>';
-                copyBtn.onclick = async () => {
-                    const text = messageContent.textContent;
-                    try {
-                        await navigator.clipboard.writeText(text);
-                        copyBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>';
-                        copyBtn.title = 'Copied!';
-                        setTimeout(() => {
-                            copyBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>';
-                            copyBtn.title = 'Copy to clipboard';
-                        }, 2000);
-                    } catch (err) {
-                        console.error('Copy failed:', err);
-                    }
-                };
-
-                // Speak button
-                const speakBtn = document.createElement('button');
-                speakBtn.className = 'action-btn';
-                speakBtn.title = 'Read aloud';
-                speakBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>';
-                speakBtn.onclick = () => {
-                    const text = messageContent.textContent;
-                    speakBtn.classList.toggle('speaking');
-                    if (speakBtn.classList.contains('speaking')) {
-                        speakText(text);
-                        // Remove speaking class when done
-                        const checkSpeaking = setInterval(() => {
-                            if (!window.speechSynthesis?.speaking && !currentAudio) {
-                                speakBtn.classList.remove('speaking');
-                                clearInterval(checkSpeaking);
-                            }
-                        }, 100);
-                    } else {
-                        window.speechSynthesis?.cancel();
-                        if (currentAudio) {
-                            currentAudio.pause();
-                            currentAudio = null;
-                        }
-                    }
-                };
-
-                actions.appendChild(copyBtn);
-                actions.appendChild(speakBtn);
-                messageContent.appendChild(actions);
+                const actionsRow = document.createElement('div');
+                actionsRow.className = 'message-actions-row';
+                actionsRow.dataset.forMessage = Date.now(); // Link to message
+                messageRow.appendChild(actionsRow);
             }
 
             chatContainer.appendChild(messageRow);
@@ -633,6 +896,63 @@
         function addUserMessage(text) {
             createMessageElement('user', text);
             scrollToBottom();
+        }
+
+        // Add action buttons to a completed assistant message
+        function addMessageActions(messageRow) {
+            const actionsRow = messageRow.querySelector('.message-actions-row');
+            const messageContent = messageRow.querySelector('.message-content');
+
+            if (!actionsRow || !messageContent || actionsRow.children.length > 0) return;
+
+            const actions = document.createElement('div');
+            actions.className = 'message-actions';
+
+            // Copy button
+            const copyBtn = document.createElement('button');
+            copyBtn.className = 'action-btn';
+            copyBtn.title = 'Copy to clipboard';
+            copyBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>';
+            copyBtn.onclick = async () => {
+                const text = messageContent.textContent;
+                try {
+                    await navigator.clipboard.writeText(text);
+                    copyBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>';
+                    copyBtn.title = 'Copied!';
+                    setTimeout(() => {
+                        copyBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>';
+                        copyBtn.title = 'Copy to clipboard';
+                    }, 2000);
+                } catch (err) {
+                    console.error('Copy failed:', err);
+                }
+            };
+
+            // Speak button
+            const speakBtn = document.createElement('button');
+            speakBtn.className = 'action-btn';
+            speakBtn.title = 'Read aloud';
+            speakBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>';
+            speakBtn.onclick = () => {
+                const text = messageContent.textContent;
+                speakBtn.classList.toggle('speaking');
+                if (speakBtn.classList.contains('speaking')) {
+                    speakText(text);
+                    // Remove speaking class when done
+                    const checkSpeaking = setInterval(() => {
+                        if (!window.speechSynthesis?.speaking) {
+                            speakBtn.classList.remove('speaking');
+                            clearInterval(checkSpeaking);
+                        }
+                    }, 200);
+                } else {
+                    stopSpeaking();
+                }
+            };
+
+            actions.appendChild(copyBtn);
+            actions.appendChild(speakBtn);
+            actionsRow.appendChild(actions);
         }
 
         function addThinkingIndicator() {
@@ -651,7 +971,8 @@
             messageRow.appendChild(avatar);
             messageRow.appendChild(thinking);
             chatContainer.appendChild(messageRow);
-            scrollToBottom();
+            // Ensure thinking indicator is visible
+            requestAnimationFrame(() => scrollToBottom());
         }
 
         function removeThinkingIndicator() {
@@ -679,7 +1000,10 @@
         }
 
         function scrollToBottom() {
-            chatContainer.scrollTop = chatContainer.scrollHeight;
+            // Use requestAnimationFrame to ensure DOM has updated before scrolling
+            requestAnimationFrame(() => {
+                chatContainer.scrollTop = chatContainer.scrollHeight;
+            });
         }
 
         function scheduleRender() {
@@ -721,13 +1045,32 @@
             }
             outputBuffer += data.data;
             scheduleRender();
+            // Also scroll immediately on each chunk for better UX
+            scrollToBottom();
         });
 
         socket.on('response_complete', () => {
             isWaiting = false;
             updateSendButton();
+
+            // Track assistant message in session
+            if (outputBuffer) {
+                addMessageToSession('assistant', outputBuffer);
+            }
+
+            // Add action buttons to the completed message
+            if (currentResponse) {
+                const messageRow = currentResponse.closest('.message-row');
+                if (messageRow) {
+                    addMessageActions(messageRow);
+                }
+            }
+
             currentResponse = null;
             outputBuffer = '';
+
+            // Final scroll after buttons added
+            scrollToBottom();
         });
 
         socket.on('process_ended', () => {
@@ -757,8 +1100,13 @@
             if (!message || isWaiting) return;
 
             addUserMessage(message);
+            addMessageToSession('user', message); // Track in session
             addThinkingIndicator();
-            socket.emit('input', { message });
+            socket.emit('input', {
+                message,
+                learner_id: getLearnerId(),
+                model: getSelectedModel()
+            });
 
             isWaiting = true;
             currentResponse = null;
@@ -785,13 +1133,50 @@
             updateSendButton();
         });
 
-        // Restart button
-        restartBtn.addEventListener('click', () => {
-            if (confirm('Start a new chat? This will clear the current conversation.')) {
-                setStatus(false, 'Restarting...');
+        // Restart button (New Chat)
+        restartBtn.addEventListener('click', async () => {
+            if (currentSessionMessages.length === 0) {
+                // No messages, just reset
+                showWelcomeScreen();
+                return;
+            }
+
+            if (confirm('Start a new chat? This will save and end the current session.')) {
+                setStatus(false, 'Ending session...');
+
+                // Save current session to history
+                saveCurrentSession();
+
+                // Tell server to end the session (which will call end_session MCP)
+                socket.emit('end_session', {
+                    learner_id: getLearnerId(),
+                    session_summary: generateSessionSummary()
+                });
+
+                // Reset UI
+                clearChatUI();
+                showWelcomeScreen();
+                startNewSession();
+                renderChatHistory();
+
+                // Tell server to restart Claude process
                 socket.emit('restart');
             }
         });
+
+        function generateSessionSummary() {
+            // Generate a brief summary of the session for end_session notes
+            const userMessages = currentSessionMessages.filter(m => m.role === 'user');
+            const assistantMessages = currentSessionMessages.filter(m => m.role === 'assistant');
+
+            let summary = `Session had ${userMessages.length} user messages and ${assistantMessages.length} assistant responses. `;
+
+            if (userMessages.length > 0) {
+                summary += `Topics discussed: ${userMessages.slice(0, 3).map(m => m.content.slice(0, 50)).join('; ')}`;
+            }
+
+            return summary;
+        }
 
         // Mobile menu toggle
         menuToggle.addEventListener('click', () => {

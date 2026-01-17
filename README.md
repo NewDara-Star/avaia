@@ -16,7 +16,7 @@ Avaia is an MCP server that transforms Claude into a pedagogically-informed prog
 ## Installation
 
 ```bash
-npm install -g avaia
+npm install -g @newdara/avaia
 ```
 
 ## Quick Start
@@ -56,6 +56,25 @@ Once configured, Claude Code will have access to 42 pedagogical tools including:
 - `infer_emotional_state` - Timing-based emotional detection
 - `get_hint` - Independence-based scaffolding
 - `log_review` - FSRS spaced repetition
+
+## GUI (New in v1.1.0)
+
+Avaia includes a web-based GUI with:
+
+- **Gemini-style Layout** – Modern, responsive chat interface
+- **Voice Input/Output** – Speak to Avaia and hear responses read aloud
+- **Persistent Chat History** – Conversations saved per learner
+- **Model Selection** – Switch between available AI models
+- **Message Actions** – Copy, read aloud, and more
+
+To start the GUI:
+
+```bash
+cd ~/.avaia/gui
+python app.py
+```
+
+Then open `http://localhost:5001` in your browser.
 
 ## CLI Commands
 

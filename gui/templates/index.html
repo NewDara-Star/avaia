@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -7,12 +8,20 @@
     <link rel="stylesheet" href="/static/style.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap"
+        rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.6/dist/purify.min.js"></script>
+    <!-- Whisper WASM via Transformers.js for offline speech recognition -->
+    <script type="module">
+        import { pipeline } from 'https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.2';
+        window.TransformersJS = { pipeline };
+    </script>
 </head>
+
 <body>
     <div class="app">
         <!-- Sidebar -->
@@ -20,7 +29,7 @@
             <div class="sidebar-header">
                 <button class="new-chat-btn" id="restartBtn">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M12 5v14M5 12h14"/>
+                        <path d="M12 5v14M5 12h14" />
                     </svg>
                     New chat
                 </button>
@@ -29,8 +38,9 @@
                 <div class="sidebar-section">
                     <span class="sidebar-label">Today</span>
                     <div class="chat-history-item active">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="1.5">
+                            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
                         </svg>
                         <span>Current Session</span>
                     </div>
@@ -49,7 +59,7 @@
             <header class="main-header">
                 <button class="menu-toggle" id="menuToggle">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M3 12h18M3 6h18M3 18h18"/>
+                        <path d="M3 12h18M3 6h18M3 18h18" />
                     </svg>
                 </button>
                 <div class="model-selector">
@@ -105,15 +115,19 @@
             <div class="input-area">
                 <div class="input-container">
                     <div class="input-wrapper">
-                        <textarea
-                            id="messageInput"
-                            placeholder="Message Avaia..."
-                            rows="1"
-                            autofocus
-                        ></textarea>
+                        <textarea id="messageInput" placeholder="Message Avaia..." rows="1" autofocus></textarea>
+                        <button class="voice-btn" id="voiceBtn" title="Voice input">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2">
+                                <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
+                                <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+                                <line x1="12" y1="19" x2="12" y2="23" />
+                                <line x1="8" y1="23" x2="16" y2="23" />
+                            </svg>
+                        </button>
                         <button class="send-btn" id="sendBtn" disabled>
                             <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                                <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
+                                <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
                             </svg>
                         </button>
                     </div>
@@ -139,15 +153,367 @@
         let renderTimeout = null;
         let isWaiting = false;
 
+        // Voice recognition setup - Whisper WASM via Transformers.js
+        const voiceBtn = document.getElementById('voiceBtn');
+        let isRecording = false;
+        let mediaRecorder = null;
+        let audioChunks = [];
+        let whisperPipeline = null;
+        let isLoadingModel = false;
+
+        // Status display for model loading
+        function updateVoiceStatus(text) {
+            voiceBtn.title = text;
+        }
+
+        // Initialize Whisper model (lazy load on first use)
+        async function initWhisper() {
+            if (whisperPipeline) return true;
+            if (isLoadingModel) return false;
+
+            isLoadingModel = true;
+            updateVoiceStatus('Loading Whisper model (~31MB)...');
+            voiceBtn.classList.add('loading');
+
+            try {
+                // Wait for Transformers.js to be available
+                let attempts = 0;
+                while (!window.TransformersJS && attempts < 50) {
+                    await new Promise(r => setTimeout(r, 100));
+                    attempts++;
+                }
+
+                if (!window.TransformersJS) {
+                    throw new Error('Transformers.js not loaded');
+                }
+
+                whisperPipeline = await window.TransformersJS.pipeline(
+                    'automatic-speech-recognition',
+                    'Xenova/whisper-tiny.en',
+                    {
+                        progress_callback: (progress) => {
+                            if (progress.status === 'progress') {
+                                const pct = Math.round(progress.progress);
+                                updateVoiceStatus(`Loading model: ${pct}%`);
+                            }
+                        }
+                    }
+                );
+
+                updateVoiceStatus('Voice input ready (Whisper)');
+                voiceBtn.classList.remove('loading');
+                isLoadingModel = false;
+                return true;
+            } catch (error) {
+                console.error('Failed to load Whisper:', error);
+                updateVoiceStatus('Whisper failed - using fallback');
+                voiceBtn.classList.remove('loading');
+                isLoadingModel = false;
+                return false;
+            }
+        }
+
+        // Convert audio blob to format Whisper can process
+        async function transcribeAudio(audioBlob) {
+            try {
+                // Convert blob to array buffer
+                const arrayBuffer = await audioBlob.arrayBuffer();
+
+                // Create audio context for resampling to 16kHz mono
+                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+
+                // Resample to 16kHz mono
+                const offlineContext = new OfflineAudioContext(1, audioBuffer.duration * 16000, 16000);
+                const source = offlineContext.createBufferSource();
+                source.buffer = audioBuffer;
+                source.connect(offlineContext.destination);
+                source.start();
+
+                const resampledBuffer = await offlineContext.startRendering();
+                const audioData = resampledBuffer.getChannelData(0);
+
+                // Transcribe with Whisper
+                updateVoiceStatus('Transcribing...');
+                const result = await whisperPipeline(audioData, {
+                    chunk_length_s: 30,
+                    stride_length_s: 5,
+                    language: 'english',
+                    task: 'transcribe',
+                });
+
+                updateVoiceStatus('Voice input ready (Whisper)');
+                return result.text.trim();
+            } catch (error) {
+                console.error('Transcription error:', error);
+                updateVoiceStatus('Transcription failed');
+                return '';
+            }
+        }
+
+        async function startRecording() {
+            // Try to init Whisper first
+            const whisperReady = await initWhisper();
+
+            if (!whisperReady) {
+                // Fallback to Web Speech API if Whisper fails
+                if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+                    startWebSpeechRecording();
+                    return;
+                }
+                alert('Speech recognition not available. Try Chrome or Edge.');
+                return;
+            }
+
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
+                audioChunks = [];
+
+                mediaRecorder.ondataavailable = (event) => {
+                    if (event.data.size > 0) {
+                        audioChunks.push(event.data);
+                    }
+                };
+
+                mediaRecorder.onstop = async () => {
+                    const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                    stream.getTracks().forEach(track => track.stop());
+
+                    if (audioBlob.size > 0) {
+                        const transcript = await transcribeAudio(audioBlob);
+                        if (transcript) {
+                            messageInput.value += transcript;
+                            updateSendButton();
+                        }
+                    }
+
+                    voiceBtn.classList.remove('recording');
+                };
+
+                mediaRecorder.start();
+                isRecording = true;
+                voiceBtn.classList.add('recording');
+                updateVoiceStatus('Recording... Click to stop');
+            } catch (error) {
+                console.error('Failed to start recording:', error);
+                alert('Could not access microphone. Please allow microphone access.');
+            }
+        }
+
+        function stopRecording() {
+            if (mediaRecorder && mediaRecorder.state === 'recording') {
+                mediaRecorder.stop();
+            }
+            isRecording = false;
+        }
+
+        // Fallback: Web Speech API
+        let webSpeechRecognition = null;
+        function startWebSpeechRecording() {
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            webSpeechRecognition = new SpeechRecognition();
+            webSpeechRecognition.continuous = true;
+            webSpeechRecognition.interimResults = true;
+            webSpeechRecognition.lang = 'en-US';
+
+            webSpeechRecognition.onresult = (event) => {
+                for (let i = event.resultIndex; i < event.results.length; i++) {
+                    if (event.results[i].isFinal) {
+                        messageInput.value += event.results[i][0].transcript;
+                        updateSendButton();
+                    }
+                }
+            };
+
+            webSpeechRecognition.onerror = (event) => {
+                console.error('Speech recognition error:', event.error);
+                stopRecording();
+            };
+
+            webSpeechRecognition.start();
+            isRecording = true;
+            voiceBtn.classList.add('recording');
+        }
+
+        function toggleRecording() {
+            if (isRecording) {
+                stopRecording();
+                if (webSpeechRecognition) {
+                    webSpeechRecognition.stop();
+                    webSpeechRecognition = null;
+                }
+            } else {
+                startRecording();
+            }
+        }
+
+        // Text-to-Speech for AI responses - Kokoro-82M neural TTS
+        let ttsPipeline = null;
+        let isLoadingTTS = false;
+        let currentAudio = null;
+
+        async function initTTS() {
+            if (ttsPipeline) return true;
+            if (isLoadingTTS) return false;
+
+            isLoadingTTS = true;
+            console.log('Loading Kokoro TTS model...');
+
+            try {
+                // Wait for Transformers.js
+                let attempts = 0;
+                while (!window.TransformersJS && attempts < 50) {
+                    await new Promise(r => setTimeout(r, 100));
+                    attempts++;
+                }
+
+                if (!window.TransformersJS) {
+                    throw new Error('Transformers.js not loaded');
+                }
+
+                // Use SpeechT5 which is more reliably available
+                ttsPipeline = await window.TransformersJS.pipeline(
+                    'text-to-speech',
+                    'Xenova/speecht5_tts',
+                    {
+                        progress_callback: (progress) => {
+                            if (progress.status === 'progress') {
+                                console.log(`TTS model loading: ${Math.round(progress.progress)}%`);
+                            }
+                        }
+                    }
+                );
+
+                console.log('TTS model ready!');
+                isLoadingTTS = false;
+                return true;
+            } catch (error) {
+                console.error('Failed to load TTS model:', error);
+                isLoadingTTS = false;
+                return false;
+            }
+        }
+
+        async function speakText(text) {
+            // Stop any current audio
+            if (currentAudio) {
+                currentAudio.pause();
+                currentAudio = null;
+            }
+            window.speechSynthesis?.cancel();
+
+            // Clean text (remove markdown)
+            const cleanText = text
+                .replace(/```[\s\S]*?```/g, 'code block')
+                .replace(/`([^`]+)`/g, '$1')
+                .replace(/\*\*([^*]+)\*\*/g, '$1')
+                .replace(/\*([^*]+)\*/g, '$1')
+                .replace(/#+\s*/g, '')
+                .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
+                .slice(0, 500); // Limit length for performance
+
+            // Try neural TTS first
+            const ttsReady = await initTTS();
+
+            if (ttsReady) {
+                try {
+                    console.log('Generating speech...');
+                    const result = await ttsPipeline(cleanText, {
+                        speaker_embeddings: 'https://huggingface.co/datasets/Xenova/transformers.js-docs/resolve/main/speaker_embeddings.bin',
+                    });
+
+                    // Convert to audio blob and play
+                    const audioData = result.audio;
+                    const sampleRate = result.sampling_rate;
+
+                    // Create WAV file
+                    const wavBuffer = createWavBuffer(audioData, sampleRate);
+                    const audioBlob = new Blob([wavBuffer], { type: 'audio/wav' });
+                    const audioUrl = URL.createObjectURL(audioBlob);
+
+                    currentAudio = new Audio(audioUrl);
+                    currentAudio.onended = () => {
+                        URL.revokeObjectURL(audioUrl);
+                        currentAudio = null;
+                    };
+                    currentAudio.play();
+                    return;
+                } catch (error) {
+                    console.error('Neural TTS failed, falling back:', error);
+                }
+            }
+
+            // Fallback: Web Speech API
+            if ('speechSynthesis' in window) {
+                const utterance = new SpeechSynthesisUtterance(cleanText);
+                utterance.rate = 1.0;
+                utterance.pitch = 1.0;
+
+                const voices = window.speechSynthesis.getVoices();
+                const preferredVoice = voices.find(v => v.name.includes('Samantha') || v.name.includes('Google'));
+                if (preferredVoice) {
+                    utterance.voice = preferredVoice;
+                }
+
+                window.speechSynthesis.speak(utterance);
+            }
+        }
+
+        // Helper: Create WAV buffer from audio data
+        function createWavBuffer(audioData, sampleRate) {
+            const numChannels = 1;
+            const bitsPerSample = 16;
+            const bytesPerSample = bitsPerSample / 8;
+            const blockAlign = numChannels * bytesPerSample;
+            const byteRate = sampleRate * blockAlign;
+            const dataSize = audioData.length * bytesPerSample;
+            const buffer = new ArrayBuffer(44 + dataSize);
+            const view = new DataView(buffer);
+
+            // WAV header
+            const writeString = (offset, str) => {
+                for (let i = 0; i < str.length; i++) {
+                    view.setUint8(offset + i, str.charCodeAt(i));
+                }
+            };
+
+            writeString(0, 'RIFF');
+            view.setUint32(4, 36 + dataSize, true);
+            writeString(8, 'WAVE');
+            writeString(12, 'fmt ');
+            view.setUint32(16, 16, true);
+            view.setUint16(20, 1, true);
+            view.setUint16(22, numChannels, true);
+            view.setUint32(24, sampleRate, true);
+            view.setUint32(28, byteRate, true);
+            view.setUint16(32, blockAlign, true);
+            view.setUint16(34, bitsPerSample, true);
+            writeString(36, 'data');
+            view.setUint32(40, dataSize, true);
+
+            // Audio data
+            const offset = 44;
+            for (let i = 0; i < audioData.length; i++) {
+                const sample = Math.max(-1, Math.min(1, audioData[i]));
+                view.setInt16(offset + i * 2, sample * 0x7FFF, true);
+            }
+
+            return buffer;
+        }
+
+        // Add event listener for voice button
+        voiceBtn.addEventListener('click', toggleRecording);
+
         // Configure marked
         marked.setOptions({
             breaks: true,
             gfm: true,
-            highlight: function(code, lang) {
+            highlight: function (code, lang) {
                 if (lang && hljs.getLanguage(lang)) {
                     try {
                         return hljs.highlight(code, { language: lang }).value;
-                    } catch (e) {}
+                    } catch (e) { }
                 }
                 return hljs.highlightAuto(code).value;
             }
@@ -202,6 +568,63 @@
 
             messageRow.appendChild(avatar);
             messageRow.appendChild(messageContent);
+
+            // Add action buttons for assistant messages (copy + speak)
+            if (type === 'assistant') {
+                const actions = document.createElement('div');
+                actions.className = 'message-actions';
+
+                // Copy button
+                const copyBtn = document.createElement('button');
+                copyBtn.className = 'action-btn';
+                copyBtn.title = 'Copy to clipboard';
+                copyBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>';
+                copyBtn.onclick = async () => {
+                    const text = messageContent.textContent;
+                    try {
+                        await navigator.clipboard.writeText(text);
+                        copyBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>';
+                        copyBtn.title = 'Copied!';
+                        setTimeout(() => {
+                            copyBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>';
+                            copyBtn.title = 'Copy to clipboard';
+                        }, 2000);
+                    } catch (err) {
+                        console.error('Copy failed:', err);
+                    }
+                };
+
+                // Speak button
+                const speakBtn = document.createElement('button');
+                speakBtn.className = 'action-btn';
+                speakBtn.title = 'Read aloud';
+                speakBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>';
+                speakBtn.onclick = () => {
+                    const text = messageContent.textContent;
+                    speakBtn.classList.toggle('speaking');
+                    if (speakBtn.classList.contains('speaking')) {
+                        speakText(text);
+                        // Remove speaking class when done
+                        const checkSpeaking = setInterval(() => {
+                            if (!window.speechSynthesis?.speaking && !currentAudio) {
+                                speakBtn.classList.remove('speaking');
+                                clearInterval(checkSpeaking);
+                            }
+                        }, 100);
+                    } else {
+                        window.speechSynthesis?.cancel();
+                        if (currentAudio) {
+                            currentAudio.pause();
+                            currentAudio = null;
+                        }
+                    }
+                };
+
+                actions.appendChild(copyBtn);
+                actions.appendChild(speakBtn);
+                messageContent.appendChild(actions);
+            }
+
             chatContainer.appendChild(messageRow);
 
             return messageContent;
@@ -281,14 +704,10 @@
 
         socket.on('status', (data) => {
             if (data.connected) {
-                setStatus(true, data.restarted ? 'Restarted' : 'Connected');
+                setStatus(true, data.restarted ? 'Reconnected' : 'Connected');
+                // Don't clear messages on reconnect - preserve chat history
                 if (data.restarted) {
-                    // Clear messages except welcome screen
-                    const messages = chatContainer.querySelectorAll('.message-row');
-                    messages.forEach(m => m.remove());
-                    showWelcomeScreen();
-                    outputBuffer = '';
-                    currentResponse = null;
+                    console.log('Socket reconnected, preserving messages');
                 }
             } else {
                 setStatus(false, data.error || 'Disconnected');
@@ -399,4 +818,5 @@
         });
     </script>
 </body>
+
 </html>

@@ -240,6 +240,7 @@ export const SessionSchema = z.object({
     })).default([]),
     exit_ticket_concept: z.string().nullable(),
     exit_ticket_passed: z.boolean().nullable(),
+    session_notes: z.string().nullable(),
 });
 export type Session = z.infer<typeof SessionSchema>;
 

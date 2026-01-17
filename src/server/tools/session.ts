@@ -434,6 +434,127 @@ async function getInterventionHandler(args: z.infer<typeof GetInterventionInput>
 }
 
 // =============================================================================
+// Tool: end_session
+// =============================================================================
+
+/**
+ * SESSION NOTES WRITING GUIDELINES
+ *
+ * When calling end_session, write session_notes that capture the FULL context
+ * of what happened, enabling seamless continuity in future sessions.
+ *
+ * WHAT TO INCLUDE:
+ *
+ * 1. ACTIVITY SUMMARY
+ *    - What the learner worked on (even if not project-related)
+ *    - Any debugging, troubleshooting, or setup tasks completed
+ *    - Discussions or explanations that occurred
+ *    Example: "Fixed configuration issue where learner name wasn't displaying in project view"
+ *
+ * 2. BLOCKERS & RESOLUTIONS
+ *    - Problems encountered and how they were solved
+ *    - Workarounds applied
+ *    - Issues left unresolved (critical for next session)
+ *    Example: "Resolved npm dependency conflict by downgrading react-dom. Still need to update tsconfig."
+ *
+ * 3. LEARNER STATE
+ *    - Emotional state at session end (frustrated, confident, tired, energized)
+ *    - Comprehension level of topics covered
+ *    - Any "aha moments" or persistent confusions
+ *    Example: "Learner seemed frustrated with CSS flexbox but had breakthrough understanding justify-content"
+ *
+ * 4. NEXT STEPS
+ *    - What should happen at the start of next session
+ *    - Any promises made ("next time we'll cover X")
+ *    - Unfinished tasks to pick up
+ *    Example: "Ready to start implementing card flip animation. Promised to explain CSS transforms."
+ *
+ * 5. META-LEARNING OBSERVATIONS
+ *    - Patterns in how the learner learns best
+ *    - Topics that need reinforcement
+ *    - Scaffolding adjustments that worked/didn't work
+ *    Example: "Learner responds well to visual diagrams. Consider using more ASCII art for data structures."
+ *
+ * TONE: Write as if briefing your future self who has no memory of this session.
+ * Be specific, not vague. "Fixed a bug" is useless. "Fixed off-by-one error in array
+ * indexing for card matching logic" is useful.
+ *
+ * LENGTH: Aim for 2-5 sentences for short sessions, up to a paragraph for complex ones.
+ */
+
+const EndSessionInput = z.object({
+    session_id: z.string().describe('The session ID to end'),
+    learner_id: z.string().describe('The learner\'s unique identifier'),
+    session_notes: z.string().describe(
+        'Natural language summary of the session. Include: what was worked on (even non-project tasks), ' +
+        'blockers encountered and resolutions, learner emotional state and comprehension, ' +
+        'next steps for future sessions, and any meta-learning observations. ' +
+        'Write as if briefing your future self who has no memory of this session.'
+    ),
+    exit_ticket_passed: z.boolean().optional().describe('Whether exit ticket was passed (if administered)'),
+});
+
+async function endSession(args: z.infer<typeof EndSessionInput>) {
+    const db = getDatabase();
+    const endTime = new Date().toISOString();
+
+    // Get session start time for duration calculation
+    const session = db.prepare(`
+        SELECT start_time, concepts_introduced, concepts_verified, milestones_completed
+        FROM session WHERE id = ?
+    `).get(args.session_id) as {
+        start_time: string;
+        concepts_introduced: string;
+        concepts_verified: string;
+        milestones_completed: string;
+    } | undefined;
+
+    if (!session) {
+        return { error: 'Session not found' };
+    }
+
+    const startTime = new Date(session.start_time);
+    const durationMinutes = Math.round((new Date(endTime).getTime() - startTime.getTime()) / 60000);
+
+    // Update session with notes and end time
+    db.prepare(`
+        UPDATE session SET
+            end_time = ?,
+            actual_duration_minutes = ?,
+            session_notes = ?,
+            exit_ticket_passed = COALESCE(?, exit_ticket_passed)
+        WHERE id = ?
+    `).run(
+        endTime,
+        durationMinutes,
+        args.session_notes,
+        args.exit_ticket_passed ?? null,
+        args.session_id
+    );
+
+    // Update learner question patterns for sessions without questions
+    const questions = parseJson<unknown[]>(session.concepts_introduced, []);
+    if (questions.length === 0) {
+        db.prepare(`
+            INSERT INTO learner_question_patterns (learner_id, sessions_without_questions)
+            VALUES (?, 1)
+            ON CONFLICT(learner_id) DO UPDATE SET
+                sessions_without_questions = sessions_without_questions + 1
+        `).run(args.learner_id);
+    }
+
+    return {
+        session_id: args.session_id,
+        duration_minutes: durationMinutes,
+        concepts_introduced: parseJson<string[]>(session.concepts_introduced, []).length,
+        concepts_verified: parseJson<string[]>(session.concepts_verified, []).length,
+        milestones_completed: parseJson<number[]>(session.milestones_completed, []).length,
+        notes_saved: true,
+        message: 'Session ended successfully. Notes saved for future reference.',
+    };
+}
+
+// =============================================================================
 // Tool: get_session_summary
 // =============================================================================
 
@@ -445,7 +566,7 @@ async function getSessionSummary(args: z.infer<typeof GetSessionSummaryInput>) {
     const db = getDatabase();
 
     const session = db.prepare(`
-    SELECT 
+    SELECT
       s.*,
       l.name as learner_name,
       p.name as project_name
@@ -468,6 +589,7 @@ async function getSessionSummary(args: z.infer<typeof GetSessionSummaryInput>) {
         emotional_states: string;
         learner_questions: string;
         exit_ticket_passed: boolean | null;
+        session_notes: string | null;
     } | undefined;
 
     if (!session) {
@@ -487,6 +609,7 @@ async function getSessionSummary(args: z.infer<typeof GetSessionSummaryInput>) {
         emotional_journey: parseJson<unknown[]>(session.emotional_states, []),
         questions_asked: parseJson<unknown[]>(session.learner_questions, []).length,
         exit_ticket_passed: session.exit_ticket_passed,
+        session_notes: session.session_notes,
     };
 }
 
@@ -580,6 +703,20 @@ export function registerSessionTools(server: McpServer): void {
         LogSessionInput.shape,
         async (args) => {
             const result = await logSession(LogSessionInput.parse(args));
+            return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
+        }
+    );
+
+    server.tool(
+        'end_session',
+        'Ends a session and saves natural language notes for continuity. Call when learner is leaving. ' +
+        'Write notes that capture: (1) what was worked on (even non-project tasks like debugging setup issues), ' +
+        '(2) blockers encountered and resolutions, (3) learner emotional state and comprehension level, ' +
+        '(4) next steps for future sessions, (5) meta-learning observations. ' +
+        'Write as if briefing your future self who has no memory of this session.',
+        EndSessionInput.shape,
+        async (args) => {
+            const result = await endSession(EndSessionInput.parse(args));
             return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
         }
     );

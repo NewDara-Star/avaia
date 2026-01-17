@@ -31,6 +31,11 @@ function getHintLevel(independenceScore: number): number {
 // Tool: introduce_concept
 // =============================================================================
 
+const TermInput = z.object({
+    term: z.string().describe('The technical term'),
+    definition: z.string().describe('Simple definition of the term'),
+});
+
 const IntroduceConceptInput = z.object({
     learner_id: z.string().describe('The learner\'s unique identifier'),
     concept_id: z.string().describe('The concept being introduced'),
@@ -38,6 +43,7 @@ const IntroduceConceptInput = z.object({
     milestone_id: z.number().int().describe('The current milestone'),
     code_snippet: z.string().max(1000).describe('The relevant code (max 1000 chars)'),
     snippet_context: z.string().describe('Context for the snippet (e.g., "Task Tracker, handleSubmit")'),
+    terms_introduced: z.array(TermInput).optional().describe('Technical terms introduced with this concept'),
 });
 
 async function introduceConcept(args: z.infer<typeof IntroduceConceptInput>) {
@@ -68,6 +74,27 @@ async function introduceConcept(args: z.infer<typeof IntroduceConceptInput>) {
         args.snippet_context
     );
 
+    // Store any terms introduced with this concept
+    const termsStored: string[] = [];
+    if (args.terms_introduced && args.terms_introduced.length > 0) {
+        const insertTerm = db.prepare(`
+            INSERT INTO learner_term (id, learner_id, term, definition, introduced_with_concept)
+            VALUES (?, ?, ?, ?, ?)
+            ON CONFLICT(learner_id, term) DO NOTHING
+        `);
+
+        for (const termEntry of args.terms_introduced) {
+            insertTerm.run(
+                generateId('term'),
+                args.learner_id,
+                termEntry.term.toLowerCase(),
+                termEntry.definition,
+                args.concept_id
+            );
+            termsStored.push(termEntry.term);
+        }
+    }
+
     // Get concept details
     const concept = db.prepare(`
     SELECT name, prerequisites, visualizations FROM concept WHERE id = ?
@@ -83,6 +110,7 @@ async function introduceConcept(args: z.infer<typeof IntroduceConceptInput>) {
     return {
         message: `Concept "${concept?.name || args.concept_id}" introduced`,
         snippet_stored: true,
+        terms_stored: termsStored,
         prerequisites,
         visualizations,
         teaching_tips: [
@@ -371,6 +399,40 @@ async function logConfidence(args: z.infer<typeof LogConfidenceInput>) {
 }
 
 // =============================================================================
+// Tool: get_known_terms
+// =============================================================================
+
+const GetKnownTermsInput = z.object({
+    learner_id: z.string().describe('The learner\'s unique identifier'),
+});
+
+async function getKnownTerms(args: z.infer<typeof GetKnownTermsInput>) {
+    const db = getDatabase();
+
+    const terms = db.prepare(`
+        SELECT term, definition, introduced_with_concept, introduced_at
+        FROM learner_term
+        WHERE learner_id = ?
+        ORDER BY introduced_at ASC
+    `).all(args.learner_id) as Array<{
+        term: string;
+        definition: string;
+        introduced_with_concept: string;
+        introduced_at: string;
+    }>;
+
+    return {
+        count: terms.length,
+        terms: terms.map(t => ({
+            term: t.term,
+            definition: t.definition,
+            introduced_with: t.introduced_with_concept,
+        })),
+        term_list: terms.map(t => t.term),
+    };
+}
+
+// =============================================================================
 // Tool Registration
 // =============================================================================
 
@@ -441,6 +503,16 @@ export function registerContentTools(server: McpServer): void {
         LogConfidenceInput.shape,
         async (args) => {
             const result = await logConfidence(LogConfidenceInput.parse(args));
+            return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
+        }
+    );
+
+    server.tool(
+        'get_known_terms',
+        'Returns all technical terms that have been introduced to a learner. Use to check vocabulary before explaining concepts.',
+        GetKnownTermsInput.shape,
+        async (args) => {
+            const result = await getKnownTerms(GetKnownTermsInput.parse(args));
             return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
         }
     );

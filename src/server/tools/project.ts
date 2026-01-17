@@ -92,11 +92,26 @@ async function startSession(args: z.infer<typeof StartSessionInput>) {
     const now = new Date();
     const sessionId = generateId('sess');
 
+    // Get the most recent completed session for context
+    const previousSession = db.prepare(`
+        SELECT id, end_time, session_notes, project_id, actual_duration_minutes
+        FROM session
+        WHERE learner_id = ? AND end_time IS NOT NULL
+        ORDER BY end_time DESC
+        LIMIT 1
+    `).get(args.learner_id) as {
+        id: string;
+        end_time: string;
+        session_notes: string | null;
+        project_id: string | null;
+        actual_duration_minutes: number | null;
+    } | undefined;
+
     // Create session record
     db.prepare(`
-    INSERT INTO session (id, learner_id, project_id, start_time, planned_duration_minutes)
-    VALUES (?, ?, ?, ?, ?)
-  `).run(
+        INSERT INTO session (id, learner_id, project_id, start_time, planned_duration_minutes)
+        VALUES (?, ?, ?, ?, ?)
+    `).run(
         sessionId,
         args.learner_id,
         args.project_id || null,
@@ -104,10 +119,115 @@ async function startSession(args: z.infer<typeof StartSessionInput>) {
         args.planned_duration_minutes || null
     );
 
+    // --- Consolidated data: Project State ---
+    const project = db.prepare(`
+        SELECT id, name, status, current_milestone, milestones_completed, time_spent_minutes, started_at
+        FROM project
+        WHERE learner_id = ? AND status = 'in_progress'
+        ORDER BY started_at DESC
+        LIMIT 1
+    `).get(args.learner_id) as {
+        id: string;
+        name: string;
+        status: string;
+        current_milestone: number;
+        milestones_completed: string;
+        time_spent_minutes: number;
+        started_at: string | null;
+    } | undefined;
+
+    let projectState = null;
+    if (project) {
+        projectState = {
+            status: 'active',
+            project_id: project.id,
+            project_name: project.name,
+            current_milestone: project.current_milestone,
+            milestones_completed: parseJson<number[]>(project.milestones_completed, []),
+            time_spent_minutes: project.time_spent_minutes,
+        };
+    }
+
+    // --- Consolidated data: Due Reviews ---
+    const dueReviewsQuery = db.prepare(`
+        SELECT
+            lc.concept_id,
+            c.name as concept_name,
+            lc.stability,
+            ci.code_snippet,
+            ci.snippet_context
+        FROM learner_concept lc
+        JOIN concept c ON c.id = lc.concept_id
+        LEFT JOIN concept_instance ci ON ci.concept_id = lc.concept_id AND ci.learner_id = lc.learner_id
+        WHERE lc.learner_id = ?
+            AND (lc.state = 'new' OR lc.next_review_date <= datetime('now'))
+        ORDER BY
+            CASE lc.state
+                WHEN 'relearning' THEN 0
+                WHEN 'learning' THEN 1
+                WHEN 'review' THEN 2
+                WHEN 'new' THEN 3
+            END,
+            lc.stability ASC
+        LIMIT 3
+    `);
+
+    const dueReviewRows = dueReviewsQuery.all(args.learner_id) as Array<{
+        concept_id: string;
+        concept_name: string;
+        stability: number;
+        code_snippet: string | null;
+        snippet_context: string | null;
+    }>;
+
+    const dueReviews = dueReviewRows.map(row => ({
+        concept_id: row.concept_id,
+        concept_name: row.concept_name,
+        snippet_context: row.snippet_context || 'General practice',
+        stability: row.stability,
+    }));
+
+    // --- Consolidated data: Stubborn Bugs ---
+    const stubbornBugRows = db.prepare(`
+        SELECT lc.concept_id, c.name as concept_name, lc.stubborn_misconceptions
+        FROM learner_concept lc
+        JOIN concept c ON c.id = lc.concept_id
+        WHERE lc.learner_id = ? AND lc.stubborn_misconceptions != '[]'
+    `).all(args.learner_id) as Array<{
+        concept_id: string;
+        concept_name: string;
+        stubborn_misconceptions: string;
+    }>;
+
+    const stubbornBugs = stubbornBugRows.flatMap(row => {
+        const misconceptions = parseJson<string[]>(row.stubborn_misconceptions, []);
+        return misconceptions.map(mid => ({
+            concept_id: row.concept_id,
+            concept_name: row.concept_name,
+            misconception_id: mid,
+        }));
+    });
+
+    // --- Consolidated data: Known Terms ---
+    const knownTermRows = db.prepare(`
+        SELECT term FROM learner_term WHERE learner_id = ? ORDER BY introduced_at ASC
+    `).all(args.learner_id) as Array<{ term: string }>;
+
+    const knownTerms = knownTermRows.map(t => t.term);
+
     return {
         session_id: sessionId,
         start_time: now.toISOString(),
-        message: 'Session started. Remember to call get_due_reviews for SRS check-in.',
+        previous_session: previousSession ? {
+            session_id: previousSession.id,
+            ended_at: previousSession.end_time,
+            duration_minutes: previousSession.actual_duration_minutes,
+            notes: previousSession.session_notes,
+        } : null,
+        project_state: projectState,
+        due_reviews: dueReviews,
+        stubborn_bugs: stubbornBugs,
+        known_terms: knownTerms,
     };
 }
 
@@ -268,6 +388,48 @@ async function createLearner(args: z.infer<typeof CreateLearnerInput>) {
 }
 
 // =============================================================================
+// Tool: get_learner_profile
+// =============================================================================
+
+const GetLearnerProfileInput = z.object({
+    learner_id: z.string().describe("The learner's unique identifier"),
+});
+
+async function getLearnerProfile(args: z.infer<typeof GetLearnerProfileInput>) {
+    const db = getDatabase();
+
+    const learner = db.prepare(`
+        SELECT id, name, started_at, preferred_teaching_method,
+               best_session_times, onboarding_complete
+        FROM learner
+        WHERE id = ?
+    `).get(args.learner_id) as {
+        id: string;
+        name: string | null;
+        started_at: string;
+        preferred_teaching_method: string;
+        best_session_times: string;
+        onboarding_complete: number;
+    } | undefined;
+
+    if (!learner) {
+        return {
+            error: 'Learner not found',
+            learner_id: args.learner_id,
+        };
+    }
+
+    return {
+        learner_id: learner.id,
+        name: learner.name,
+        started_at: learner.started_at,
+        preferred_teaching_method: learner.preferred_teaching_method,
+        best_session_times: parseJson<string[]>(learner.best_session_times, []),
+        onboarding_complete: !!learner.onboarding_complete,
+    };
+}
+
+// =============================================================================
 // Tool: complete_onboarding
 // =============================================================================
 
@@ -349,7 +511,7 @@ export function registerProjectTools(server: McpServer): void {
 
     server.tool(
         'start_session',
-        'Initializes a new learning session. Call at the start of each session.',
+        'Initializes a new learning session with all check-in data. Returns session info, project state, due reviews, stubborn bugs, and known terms in one call.',
         StartSessionInput.shape,
         async (args) => {
             const result = await startSession(StartSessionInput.parse(args));
@@ -383,6 +545,16 @@ export function registerProjectTools(server: McpServer): void {
         CreateLearnerInput.shape,
         async (args) => {
             const result = await createLearner(CreateLearnerInput.parse(args));
+            return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
+        }
+    );
+
+    server.tool(
+        'get_learner_profile',
+        'Gets a learner profile including name, preferences, and onboarding status.',
+        GetLearnerProfileInput.shape,
+        async (args) => {
+            const result = await getLearnerProfile(GetLearnerProfileInput.parse(args));
             return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
         }
     );

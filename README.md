@@ -8,10 +8,41 @@ Avaia is an MCP server that transforms Claude into a pedagogically-informed prog
 
 - **Invisible Spaced Repetition**: Fight the forgetting curve without flashcard fatigue
 - **Designed Productive Failure**: Sandbox problems that force failure before instruction
+- **Dynamic Content Generation**: AI-generated questions, hints, and exercises based on learner's actual code
 - **Diagnostic Assessment**: Code prediction tasks that reveal specific misconceptions
 - **Confidence Tracking**: Leverage the hypercorrection effect for stubborn bugs
 - **Adaptive Scaffolding**: Progressive hint reduction as competence grows
 - **Emotional State Inference**: Detect frustration and disengagement from timing patterns
+- **Complete Chat History**: Auto-logged conversations for debugging and session continuity
+- **Semantic Trigger Phrases**: Natural language cues automatically invoke appropriate tools
+
+## What's New in v1.2.0
+
+### Dynamic Content Generation
+All content-heavy tools now return **context + generation instructions** instead of pre-seeded static content:
+- `get_diagnostic_question` - Uses learner's actual code + misconception patterns
+- `get_hint` - Contextual hints based on learner's code and independence level
+- `get_contrasting_case` - Generates buggy vs fixed comparisons from learner's code
+- `get_remediation` - Targeted fixes based on specific learner errors
+- `get_refactoring_challenge` - Works even without cross-project code
+
+### Chat History Storage
+- New `chat_message` table stores complete conversation transcripts
+- **GUI auto-logging** - Zero AI overhead, guaranteed completeness
+- `get_chat_history` tool for debugging and session continuity
+
+### Semantic Trigger Phrases
+AI now recognizes natural language cues and calls appropriate tools:
+- "goodnight" → `end_session()`
+- "I'm stuck" → `get_hint()`
+- "I get it" → `get_diagnostic_question()` (verify!)
+- "ugh" → `infer_emotional_state()` + intervention
+
+### Auto-Create Concepts
+No more FOREIGN KEY errors - concepts are created on-the-fly when introduced.
+
+### Proactive Verification
+Mandatory inline verification after teaching complex concepts (no more skipping!).
 
 ## Installation
 

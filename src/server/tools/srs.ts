@@ -185,38 +185,54 @@ async function getRefactoringChallenge(args: z.infer<typeof GetRefactoringChalle
     SELECT name, category FROM concept WHERE id = ?
   `).get(args.concept_id) as { name: string; category: string | null } | undefined;
 
-    if (!concept) {
-        return { error: 'Concept not found' };
-    }
-
-    // Get a previous code snippet from a different project
-    const snippet = db.prepare(`
-    SELECT code_snippet, snippet_context, project_id
-    FROM concept_instance
-    WHERE learner_id = ? AND concept_id = ? AND project_id != ?
-    ORDER BY created_at DESC
-    LIMIT 1
-  `).get(args.learner_id, args.concept_id, args.current_project_id) as {
+    // Get ALL code snippets for this concept (including current project)
+    const allSnippets = db.prepare(`
+        SELECT code_snippet, snippet_context, project_id
+        FROM concept_instance
+        WHERE learner_id = ? AND concept_id = ?
+        ORDER BY created_at DESC
+    `).all(args.learner_id, args.concept_id) as Array<{
         code_snippet: string;
         snippet_context: string | null;
         project_id: string;
-    } | undefined;
+    }>;
 
-    if (!snippet) {
-        return {
-            has_challenge: false,
-            message: 'No previous code found for cross-project challenge.',
-            fallback: 'Use a quick recall question instead.',
-        };
-    }
+    // Get snippet from a different project if available
+    const crossProjectSnippet = allSnippets.find(s => s.project_id !== args.current_project_id);
+
+    // Get current project snippet
+    const currentSnippet = allSnippets.find(s => s.project_id === args.current_project_id);
+
+    // Get related concepts in the same category
+    const relatedConcepts = db.prepare(`
+        SELECT id, name FROM concept
+        WHERE category = ? AND id != ?
+        LIMIT 3
+    `).all(concept?.category || '', args.concept_id) as Array<{ id: string; name: string }>;
 
     return {
-        has_challenge: true,
-        concept_name: concept.name,
-        original_context: snippet.snippet_context || 'Previous project',
-        original_code: snippet.code_snippet,
-        challenge: `Apply ${concept.name} in your current project. Here's how you used it before:`,
-        prompt: 'How would you adapt this pattern to your current work?',
+        concept_name: concept?.name || args.concept_id,
+        concept_category: concept?.category || 'General',
+        cross_project_code: crossProjectSnippet?.code_snippet || null,
+        cross_project_context: crossProjectSnippet?.snippet_context || null,
+        current_project_code: currentSnippet?.code_snippet || null,
+        current_project_context: currentSnippet?.snippet_context || null,
+        related_concepts: relatedConcepts,
+        generation_instructions: {
+            format: 'Generate a refactoring challenge that reinforces the decayed concept',
+            rules: [
+                'If cross_project_code exists, ask them to apply the pattern in their current project',
+                'If only current_project_code exists, ask them to improve or extend it',
+                'If no code exists, generate a small focused exercise',
+                'Connect to related_concepts if applicable',
+                'Keep the challenge small (5-10 minute task)',
+            ],
+            example_prompts: [
+                `"You used ${concept?.name || 'this'} in [previous project]. How would you apply it here?"`,
+                `"Can you refactor this code to use ${concept?.name || 'this concept'}?"`,
+                `"What would happen if we combined ${concept?.name || 'this'} with [related concept]?"`,
+            ],
+        },
     };
 }
 

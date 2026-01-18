@@ -663,6 +663,111 @@ async function getQuestionPatterns(args: z.infer<typeof GetQuestionPatternsInput
 }
 
 // =============================================================================
+// Tool: log_chat_message
+// =============================================================================
+
+const LogChatMessageInput = z.object({
+    session_id: z.string().describe('The current session ID'),
+    role: z.enum(['user', 'assistant', 'system']).describe('Who sent the message'),
+    content: z.string().describe('The actual message text'),
+    tool_calls: z.array(z.object({
+        tool: z.string(),
+        args: z.any()
+    })).optional().describe('MCP tool calls made (if assistant)'),
+    tool_results: z.array(z.object({
+        tool: z.string(),
+        result: z.any()
+    })).optional().describe('Tool results received (if assistant)'),
+    tokens_used: z.number().int().optional().describe('Tokens used for this message'),
+});
+
+async function logChatMessage(args: z.infer<typeof LogChatMessageInput>) {
+    const db = getDatabase();
+    const now = new Date();
+
+    db.prepare(`
+        INSERT INTO chat_message (
+            id, session_id, timestamp, role, content, 
+            tool_calls, tool_results, tokens_used
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(
+        generateId('chat'),
+        args.session_id,
+        now.toISOString(),
+        args.role,
+        args.content,
+        args.tool_calls ? toJson(args.tool_calls) : null,
+        args.tool_results ? toJson(args.tool_results) : null,
+        args.tokens_used || null
+    );
+
+    return { logged: true, timestamp: now.toISOString() };
+}
+
+// =============================================================================
+// Tool: get_chat_history
+// =============================================================================
+
+const GetChatHistoryInput = z.object({
+    session_id: z.string().describe('The session ID to retrieve history for'),
+    limit: z.number().int().positive().optional().describe('Maximum messages to return'),
+    role_filter: z.enum(['user', 'assistant', 'system']).optional().describe('Filter by role'),
+    since_timestamp: z.string().optional().describe('Only messages after this ISO timestamp'),
+});
+
+async function getChatHistory(args: z.infer<typeof GetChatHistoryInput>) {
+    const db = getDatabase();
+
+    let query = `
+        SELECT id, timestamp, role, content, tool_calls, tool_results, tokens_used
+        FROM chat_message
+        WHERE session_id = ?
+    `;
+    const params: (string | number)[] = [args.session_id];
+
+    if (args.role_filter) {
+        query += ` AND role = ?`;
+        params.push(args.role_filter);
+    }
+
+    if (args.since_timestamp) {
+        query += ` AND timestamp > ?`;
+        params.push(args.since_timestamp);
+    }
+
+    query += ` ORDER BY timestamp ASC`;
+
+    if (args.limit) {
+        query += ` LIMIT ?`;
+        params.push(args.limit);
+    }
+
+    const messages = db.prepare(query).all(...params) as Array<{
+        id: string;
+        timestamp: string;
+        role: string;
+        content: string;
+        tool_calls: string | null;
+        tool_results: string | null;
+        tokens_used: number | null;
+    }>;
+
+    return {
+        session_id: args.session_id,
+        message_count: messages.length,
+        messages: messages.map(m => ({
+            id: m.id,
+            timestamp: m.timestamp,
+            role: m.role,
+            content: m.content,
+            tool_calls: parseJson(m.tool_calls || 'null', null),
+            tool_results: parseJson(m.tool_results || 'null', null),
+            tokens_used: m.tokens_used,
+        })),
+    };
+}
+
+// =============================================================================
 // Tool Registration
 // =============================================================================
 
@@ -787,6 +892,26 @@ export function registerSessionTools(server: McpServer): void {
         GetQuestionPatternsInput.shape,
         async (args) => {
             const result = await getQuestionPatterns(GetQuestionPatternsInput.parse(args));
+            return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
+        }
+    );
+
+    server.tool(
+        'log_chat_message',
+        'Logs a chat message for complete conversation history. Call after every message exchange for debugging and analysis.',
+        LogChatMessageInput.shape,
+        async (args) => {
+            const result = await logChatMessage(LogChatMessageInput.parse(args));
+            return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
+        }
+    );
+
+    server.tool(
+        'get_chat_history',
+        'Retrieves conversation history for a session. Use for debugging, analysis, or session continuity.',
+        GetChatHistoryInput.shape,
+        async (args) => {
+            const result = await getChatHistory(GetChatHistoryInput.parse(args));
             return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
         }
     );

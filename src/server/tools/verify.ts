@@ -12,59 +12,70 @@ import { getDatabase, generateId, parseJson, toJson } from '../db/index.js';
 // =============================================================================
 
 const GetDiagnosticQuestionInput = z.object({
+    learner_id: z.string().describe('The learner\'s unique identifier'),
     concept_id: z.string().describe('The concept to generate a diagnostic question for'),
 });
 
 async function getDiagnosticQuestion(args: z.infer<typeof GetDiagnosticQuestionInput>) {
     const db = getDatabase();
 
-    const question = db.prepare(`
-    SELECT id, code_snippet, prompt, correct_answer, distractors
-    FROM diagnostic_question
-    WHERE concept_id = ?
-    ORDER BY RANDOM()
-    LIMIT 1
-  `).get(args.concept_id) as {
-        id: string;
-        code_snippet: string | null;
-        prompt: string;
-        correct_answer: string;
-        distractors: string;
+    // 1. Get learner's recent code for this concept
+    const recentCode = db.prepare(`
+        SELECT code_snippet, snippet_context, created_at
+        FROM concept_instance
+        WHERE learner_id = ? AND concept_id = ?
+        ORDER BY created_at DESC
+        LIMIT 1
+    `).get(args.learner_id, args.concept_id) as {
+        code_snippet: string;
+        snippet_context: string | null;
+        created_at: string;
     } | undefined;
 
-    if (!question) {
-        return {
-            error: 'No diagnostic question found for this concept',
-            fallback: 'Use Socratic questioning instead: Ask the learner to explain the concept in their own words.',
-        };
-    }
+    // 2. Get common misconceptions for this concept
+    const misconceptions = db.prepare(`
+        SELECT id, name, description, trigger_answer
+        FROM misconception
+        WHERE concept_id = ?
+    `).all(args.concept_id) as Array<{
+        id: string;
+        name: string;
+        description: string | null;
+        trigger_answer: string | null;
+    }>;
 
-    const distractors = parseJson<Array<{
-        answer: string;
-        misconception_id: string | null;
-    }>>(question.distractors, []);
+    // 3. Get concept name
+    const concept = db.prepare(`
+        SELECT name FROM concept WHERE id = ?
+    `).get(args.concept_id) as { name: string } | undefined;
 
-    // Build options array with correct answer mixed in
-    const options = [
-        { id: 'A', text: question.correct_answer, is_correct: true },
-        ...distractors.map((d, i) => ({
-            id: String.fromCharCode(66 + i), // B, C, D, ...
-            text: d.answer,
-            is_correct: false,
-        })),
-    ];
-
-    // Shuffle options
-    for (let i = options.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [options[i], options[j]] = [options[j], options[i]];
-    }
-
+    // 4. Return context for AI to generate question
     return {
-        question_id: question.id,
-        code_snippet: question.code_snippet,
-        prompt: question.prompt,
-        options,
+        concept_name: concept?.name || args.concept_id,
+        learner_code: recentCode?.code_snippet || null,
+        code_context: recentCode?.snippet_context || null,
+        common_misconceptions: misconceptions.map(m => ({
+            id: m.id,
+            name: m.name,
+            description: m.description,
+            trigger_answer: m.trigger_answer,
+        })),
+        generation_instructions: {
+            format: 'Generate a multiple-choice diagnostic question with 4 options (A, B, C, D)',
+            rules: [
+                'Use the learner\'s actual code if available',
+                'Make distractors based on the misconceptions listed',
+                'One correct answer, three incorrect (mapped to misconceptions)',
+                'Ask about behavior/output, not syntax',
+                'If learner answers wrong, note which misconception_id it maps to',
+            ],
+            example_prompts: [
+                'What does this code output?',
+                'When does [function] actually run?',
+                'What will [variable] contain after this executes?',
+                'Who provides the value of [parameter]?',
+            ],
+        },
     };
 }
 
@@ -176,41 +187,94 @@ async function verifyConcept(args: z.infer<typeof VerifyConceptInput>) {
 // =============================================================================
 
 const GetContrastingCaseInput = z.object({
-    misconception_id: z.string().describe('The misconception to get remediation for'),
+    learner_id: z.string().describe('The learner\'s unique identifier'),
+    concept_id: z.string().describe('The concept with the misconception'),
+    misconception_id: z.string().optional().describe('The specific misconception (if known)'),
 });
 
 async function getContrastingCase(args: z.infer<typeof GetContrastingCaseInput>) {
     const db = getDatabase();
 
-    const misconception = db.prepare(`
-    SELECT name, description, remediation_strategy, contrasting_case
-    FROM misconception
-    WHERE id = ?
-  `).get(args.misconception_id) as {
-        name: string;
-        description: string | null;
-        remediation_strategy: string | null;
-        contrasting_case: string | null;
+    // Get learner's recent code for this concept
+    const recentCode = db.prepare(`
+        SELECT code_snippet, snippet_context
+        FROM concept_instance
+        WHERE learner_id = ? AND concept_id = ?
+        ORDER BY created_at DESC
+        LIMIT 1
+    `).get(args.learner_id, args.concept_id) as {
+        code_snippet: string;
+        snippet_context: string | null;
     } | undefined;
 
-    if (!misconception) {
-        return { error: 'Misconception not found' };
+    // Get misconception details if available
+    let misconception = null;
+    if (args.misconception_id) {
+        misconception = db.prepare(`
+            SELECT name, description, remediation_strategy, contrasting_case
+            FROM misconception
+            WHERE id = ?
+        `).get(args.misconception_id) as {
+            name: string;
+            description: string | null;
+            remediation_strategy: string | null;
+            contrasting_case: string | null;
+        } | undefined;
     }
 
-    let cases = null;
-    if (misconception.contrasting_case) {
+    // Get all misconceptions for this concept (for generating distractors)
+    const allMisconceptions = db.prepare(`
+        SELECT id, name, description, trigger_answer
+        FROM misconception
+        WHERE concept_id = ?
+    `).all(args.concept_id) as Array<{
+        id: string;
+        name: string;
+        description: string | null;
+        trigger_answer: string | null;
+    }>;
+
+    // Get concept name
+    const concept = db.prepare(`
+        SELECT name FROM concept WHERE id = ?
+    `).get(args.concept_id) as { name: string } | undefined;
+
+    // Try to parse pre-seeded contrasting case if available
+    let seededCase = null;
+    if (misconception?.contrasting_case) {
         try {
-            cases = JSON.parse(misconception.contrasting_case);
+            seededCase = JSON.parse(misconception.contrasting_case);
         } catch {
-            // Invalid JSON
+            // Invalid JSON, will use AI generation
         }
     }
 
     return {
-        name: misconception.name,
-        description: misconception.description,
-        remediation_strategy: misconception.remediation_strategy,
-        contrasting_case: cases,
+        concept_name: concept?.name || args.concept_id,
+        learner_code: recentCode?.code_snippet || null,
+        code_context: recentCode?.snippet_context || null,
+        misconception: misconception ? {
+            id: args.misconception_id,
+            name: misconception.name,
+            description: misconception.description,
+            remediation_strategy: misconception.remediation_strategy,
+        } : null,
+        seeded_contrasting_case: seededCase,
+        all_misconceptions: allMisconceptions,
+        generation_instructions: {
+            format: 'Generate two code snippets side-by-side showing the misconception vs correct understanding',
+            rules: [
+                'Use the learner\'s actual code as the "buggy" version if available',
+                'Create a "fixed" version showing correct behavior',
+                'Minimize differences between the two versions',
+                'Show expected output for each version',
+                'Ask: "What\'s the ONE difference that changes the outcome?"',
+            ],
+            example: {
+                case_a: { code: '// Buggy version', output: 'Unexpected result' },
+                case_b: { code: '// Fixed version', output: 'Expected result' },
+            },
+        },
         prompt: 'What\'s the ONE difference that changes the outcome?',
     };
 }
@@ -371,32 +435,87 @@ async function logExitTicketResult(args: z.infer<typeof LogExitTicketResultInput
 // =============================================================================
 
 const GetRemediationInput = z.object({
-    misconception_id: z.string().describe('The misconception to remediate'),
+    learner_id: z.string().describe('The learner\'s unique identifier'),
+    concept_id: z.string().describe('The concept being remediated'),
+    misconception_id: z.string().optional().describe('The specific misconception (if known)'),
+    learner_error: z.string().optional().describe('Description of what the learner got wrong'),
 });
 
 async function getRemediation(args: z.infer<typeof GetRemediationInput>) {
     const db = getDatabase();
 
-    const misconception = db.prepare(`
-    SELECT name, description, remediation_strategy, concept_id
-    FROM misconception
-    WHERE id = ?
-  `).get(args.misconception_id) as {
-        name: string;
-        description: string | null;
-        remediation_strategy: string | null;
-        concept_id: string;
+    // Get learner's recent code for this concept
+    const recentCode = db.prepare(`
+        SELECT code_snippet, snippet_context
+        FROM concept_instance
+        WHERE learner_id = ? AND concept_id = ?
+        ORDER BY created_at DESC
+        LIMIT 1
+    `).get(args.learner_id, args.concept_id) as {
+        code_snippet: string;
+        snippet_context: string | null;
     } | undefined;
 
-    if (!misconception) {
-        return { error: 'Misconception not found' };
+    // Get misconception details if available
+    let misconception = null;
+    if (args.misconception_id) {
+        misconception = db.prepare(`
+            SELECT name, description, remediation_strategy
+            FROM misconception
+            WHERE id = ?
+        `).get(args.misconception_id) as {
+            name: string;
+            description: string | null;
+            remediation_strategy: string | null;
+        } | undefined;
     }
 
+    // Get all misconceptions for this concept
+    const allMisconceptions = db.prepare(`
+        SELECT id, name, description, trigger_answer, remediation_strategy
+        FROM misconception
+        WHERE concept_id = ?
+    `).all(args.concept_id) as Array<{
+        id: string;
+        name: string;
+        description: string | null;
+        trigger_answer: string | null;
+        remediation_strategy: string | null;
+    }>;
+
+    // Get concept name
+    const concept = db.prepare(`
+        SELECT name FROM concept WHERE id = ?
+    `).get(args.concept_id) as { name: string } | undefined;
+
     return {
-        misconception_name: misconception.name,
-        description: misconception.description,
-        remediation_strategy: misconception.remediation_strategy,
-        concept_id: misconception.concept_id,
+        concept_name: concept?.name || args.concept_id,
+        learner_code: recentCode?.code_snippet || null,
+        code_context: recentCode?.snippet_context || null,
+        learner_error: args.learner_error || null,
+        identified_misconception: misconception ? {
+            id: args.misconception_id,
+            name: misconception.name,
+            description: misconception.description,
+            seeded_strategy: misconception.remediation_strategy,
+        } : null,
+        all_misconceptions: allMisconceptions,
+        generation_instructions: {
+            format: 'Generate a targeted remediation based on the specific error',
+            rules: [
+                'Use the learner\'s actual code to explain the error',
+                'Reference the seeded_strategy if available, but adapt to context',
+                'Explain WHY their mental model was wrong',
+                'Show the correct mental model with their code',
+                'End with a verification question to confirm understanding',
+            ],
+            approach: [
+                '1. Acknowledge the misconception (don\'t shame)',
+                '2. Explain what they thought vs what actually happens',
+                '3. Show the correction using their code',
+                '4. Ask them to predict what happens now',
+            ],
+        },
     };
 }
 
@@ -445,7 +564,7 @@ async function getStubbornBugs(args: z.infer<typeof GetStubbornBugsInput>) {
 export function registerVerifyTools(server: McpServer): void {
     server.tool(
         'get_diagnostic_question',
-        'Gets a code prediction task with misconception-mapped distractors. Call during Verification phase.',
+        'Returns learner code context and misconceptions for the AI to generate a contextual diagnostic question. Call during Verification phase.',
         GetDiagnosticQuestionInput.shape,
         async (args) => {
             const result = await getDiagnosticQuestion(GetDiagnosticQuestionInput.parse(args));
@@ -465,7 +584,7 @@ export function registerVerifyTools(server: McpServer): void {
 
     server.tool(
         'get_contrasting_case',
-        'Gets two code snippets for stubborn bug remediation. Use when high-confidence error detected.',
+        'Returns learner code and misconception context for AI to generate contrasting case (buggy vs fixed). Use for stubborn bug remediation.',
         GetContrastingCaseInput.shape,
         async (args) => {
             const result = await getContrastingCase(GetContrastingCaseInput.parse(args));
@@ -515,7 +634,7 @@ export function registerVerifyTools(server: McpServer): void {
 
     server.tool(
         'get_remediation',
-        'Gets the targeted fix strategy for a specific misconception.',
+        'Returns learner code and error context for AI to generate targeted remediation. Call after incorrect answer.',
         GetRemediationInput.shape,
         async (args) => {
             const result = await getRemediation(GetRemediationInput.parse(args));

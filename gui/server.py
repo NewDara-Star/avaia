@@ -1,10 +1,12 @@
 """
 Avaia GUI Server
 Uses Claude Code's --print mode with stream-json for clean output
+With auto-logging of all messages to chat_message table
 """
 
 import json
 import os
+import sqlite3
 import subprocess
 import sys
 import signal
@@ -12,6 +14,7 @@ import threading
 import time
 import uuid
 import webbrowser
+from datetime import datetime
 
 from flask import Flask, render_template
 from flask_socketio import SocketIO, emit
@@ -24,6 +27,70 @@ socketio = SocketIO(app, cors_allowed_origins="*", async_mode='threading')
 session_id = None
 current_process = None
 lock = threading.Lock()
+
+# Database path (same as MCP server uses)
+DB_PATH = os.path.expanduser('~/.avaia/avaia.db')
+
+# Current MCP session ID (set by start_session tool)
+current_mcp_session_id = None
+
+
+def get_db():
+    """Get database connection"""
+    return sqlite3.connect(DB_PATH)
+
+
+def auto_log_message(role: str, content: str, tool_calls=None, tool_results=None):
+    """
+    Automatically log a chat message to the database.
+    Zero AI overhead - happens at GUI level.
+    """
+    global current_mcp_session_id
+    
+    # Try to get the current MCP session from the database
+    if not current_mcp_session_id:
+        try:
+            db = get_db()
+            cursor = db.execute(
+                "SELECT id FROM session ORDER BY start_time DESC LIMIT 1"
+            )
+            row = cursor.fetchone()
+            if row:
+                current_mcp_session_id = row[0]
+            db.close()
+        except Exception as e:
+            print(f"Warning: Could not get session ID: {e}")
+            return
+    
+    if not current_mcp_session_id:
+        return  # No active session, skip logging
+    
+    try:
+        db = get_db()
+        msg_id = f"chat_{uuid.uuid4().hex[:16]}"
+        timestamp = datetime.utcnow().isoformat() + 'Z'
+        
+        db.execute(
+            """
+            INSERT INTO chat_message (
+                id, session_id, timestamp, role, content, tool_calls, tool_results
+            ) VALUES (?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                msg_id,
+                current_mcp_session_id,
+                timestamp,
+                role,
+                content,
+                json.dumps(tool_calls) if tool_calls else None,
+                json.dumps(tool_results) if tool_results else None,
+            )
+        )
+        db.commit()
+        db.close()
+        print(f"[AUTO-LOG] {role}: {len(content)} chars")
+    except Exception as e:
+        print(f"Warning: Failed to log message: {e}")
 
 
 def find_claude_code():
@@ -40,6 +107,7 @@ def find_claude_code():
 def stream_response(process, client_sid):
     """Stream Claude's response to the client"""
     full_response = ""
+    tool_calls_collected = []
 
     try:
         for line in iter(process.stdout.readline, ''):
@@ -64,6 +132,12 @@ def stream_response(process, client_sid):
                             text = block.get('text', '')
                             full_response += text
                             socketio.emit('output', {'data': text}, room=client_sid)
+                        elif block.get('type') == 'tool_use':
+                            # Collect tool calls
+                            tool_calls_collected.append({
+                                'tool': block.get('name'),
+                                'args': block.get('input', {})
+                            })
 
                 elif msg_type == 'content_block_delta':
                     # Streaming delta
@@ -96,6 +170,15 @@ def stream_response(process, client_sid):
 
     finally:
         process.wait()
+        
+        # AUTO-LOG: Assistant response (after stream completes)
+        if full_response:
+            auto_log_message(
+                role='assistant',
+                content=full_response,
+                tool_calls=tool_calls_collected if tool_calls_collected else None
+            )
+        
         socketio.emit('response_complete', {}, room=client_sid)
 
 
@@ -200,6 +283,9 @@ def handle_input(data):
     learner_id = data.get('learner_id', '').strip()
     model = data.get('model', 'sonnet').strip()
     if message:
+        # AUTO-LOG: User message
+        auto_log_message(role='user', content=message)
+        
         send_message(
             message,
             request.sid,
@@ -226,7 +312,7 @@ def handle_end_session(data):
 
 @socketio.on('restart')
 def handle_restart():
-    global session_id, current_process
+    global session_id, current_process, current_mcp_session_id
 
     # Kill current process if running
     with lock:
@@ -239,6 +325,7 @@ def handle_restart():
 
     # Reset session
     session_id = None
+    current_mcp_session_id = None  # Reset so next message picks up new session
 
     emit('status', {'connected': True, 'restarted': True})
 

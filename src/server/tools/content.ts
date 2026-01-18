@@ -28,6 +28,18 @@ function getHintLevel(independenceScore: number): number {
 }
 
 // =============================================================================
+// Helper: Convert concept_id to human-readable name
+// e.g., "css_grid_layout" → "CSS Grid Layout"
+// =============================================================================
+
+function formatConceptName(conceptId: string): string {
+    return conceptId
+        .split(/[_-]/)
+        .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+        .join(' ');
+}
+
+// =============================================================================
 // Tool: introduce_concept
 // =============================================================================
 
@@ -49,6 +61,15 @@ const IntroduceConceptInput = z.object({
 async function introduceConcept(args: z.infer<typeof IntroduceConceptInput>) {
     const db = getDatabase();
     const now = new Date();
+
+    // Auto-create concept if it doesn't exist (flexible teaching)
+    const existingConcept = db.prepare('SELECT id FROM concept WHERE id = ?').get(args.concept_id);
+    if (!existingConcept) {
+        db.prepare(`
+            INSERT INTO concept (id, name, category, cluster, prerequisites, sandbox_id, visualizations)
+            VALUES (?, ?, 'Dynamic', NULL, '[]', NULL, '[]')
+        `).run(args.concept_id, formatConceptName(args.concept_id));
+    }
 
     // Create or update learner_concept record
     db.prepare(`
@@ -149,6 +170,18 @@ async function getHint(args: z.infer<typeof GetHintInput>) {
     SELECT name FROM concept WHERE id = ?
   `).get(args.concept_id) as { name: string } | undefined;
 
+    // Get learner's recent code for context
+    const recentCode = db.prepare(`
+        SELECT code_snippet, snippet_context
+        FROM concept_instance
+        WHERE learner_id = ? AND concept_id = ?
+        ORDER BY created_at DESC
+        LIMIT 1
+    `).get(args.learner_id, args.concept_id) as {
+        code_snippet: string;
+        snippet_context: string | null;
+    } | undefined;
+
     // Generate hint guidance based on level
     let hintGuidance: string;
     switch (hintLevel) {
@@ -175,8 +208,21 @@ async function getHint(args: z.infer<typeof GetHintInput>) {
         hint_level: hintLevel,
         hint_level_name: levelInfo.name,
         independence_score: independenceScore,
+        concept_name: concept?.name || args.concept_id,
+        learner_code: recentCode?.code_snippet || null,
+        code_context: recentCode?.snippet_context || null,
+        specific_question: args.specific_question || null,
         guidance: hintGuidance,
         anti_pattern: 'Do NOT provide more detail than the hint level allows. The struggle IS the learning.',
+        generation_instructions: {
+            format: 'Generate a hint appropriate to the hint_level',
+            rules: [
+                'Use the learner\'s actual code if available',
+                'Reference their specific_question if provided',
+                'Match the guidance template for this level',
+                'DO NOT give more detail than the level allows',
+            ],
+        },
     };
 }
 

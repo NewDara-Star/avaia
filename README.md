@@ -2,117 +2,118 @@
 
 **Proactive AI Programming Teacher**
 
-Avaia is an MCP server that transforms Claude into a pedagogically-informed programming tutor. It uses spaced repetition (FSRS-5), designed productive failure, and adaptive scaffolding to create lasting learning.
+Avaia is a native desktop app that transforms Claude into a pedagogically-informed programming tutor. It uses spaced repetition (FSRS-5), designed productive failure, and adaptive scaffolding to create lasting learning.
 
 ## Features
 
-- **Invisible Spaced Repetition**: Fight the forgetting curve without flashcard fatigue
-- **Designed Productive Failure**: Sandbox problems that force failure before instruction
-- **Dynamic Content Generation**: AI-generated questions, hints, and exercises based on learner's actual code
-- **Diagnostic Assessment**: Code prediction tasks that reveal specific misconceptions
-- **Confidence Tracking**: Leverage the hypercorrection effect for stubborn bugs
-- **Adaptive Scaffolding**: Progressive hint reduction as competence grows
-- **Emotional State Inference**: Detect frustration and disengagement from timing patterns
-- **Complete Chat History**: Auto-logged conversations for debugging and session continuity
-- **Semantic Trigger Phrases**: Natural language cues automatically invoke appropriate tools
+- **49 Pedagogical Tools** — Complete tool suite for session, content, verification, SRS, sandbox, and track management
+- **7 Learning Tracks** — JavaScript Web, Python Data, C Systems, DSA, CS Theory, ML Engineering, and more
+- **Invisible Spaced Repetition** — FSRS-5 algorithm fights the forgetting curve without flashcard fatigue
+- **Designed Productive Failure** — Sandbox problems force failure before instruction
+- **Dynamic Content Generation** — AI-generated questions, hints, and exercises based on learner's actual code
+- **Diagnostic Assessment** — Code prediction tasks that reveal specific misconceptions
+- **Confidence Tracking** — Leverage the hypercorrection effect for stubborn bugs
+- **Adaptive Scaffolding** — Progressive hint reduction as competence grows
+- **Emotional State Inference** — Detect frustration and disengagement from timing patterns
+- **Complete Chat History** — Auto-logged conversations for debugging and session continuity
+- **Semantic Trigger Phrases** — Natural language cues automatically invoke appropriate tools
 
-## What's New in v1.2.0
+## What's New in v1.4.0
 
-### Dynamic Content Generation
-All content-heavy tools now return **context + generation instructions** instead of pre-seeded static content:
-- `get_diagnostic_question` - Uses learner's actual code + misconception patterns
-- `get_hint` - Contextual hints based on learner's code and independence level
-- `get_contrasting_case` - Generates buggy vs fixed comparisons from learner's code
-- `get_remediation` - Targeted fixes based on specific learner errors
-- `get_refactoring_challenge` - Works even without cross-project code
+### New Software Engineering Track
+- **12 new projects** — From Naval Combat Simulator to Distributed Systems
+- **4-tier progression** — Logic & Linear Breakdown → Modular Decomposition → Architectural Abstraction → System Design & Trade-offs
+- **Productive Failure pedagogy** — Learn design patterns by encountering the problems they solve
+- **Real-world architecture** — Build games, parsers, web servers, microservices, and distributed systems
 
-### Chat History Storage
-- New `chat_message` table stores complete conversation transcripts
-- **GUI auto-logging** - Zero AI overhead, guaranteed completeness
-- `get_chat_history` tool for debugging and session continuity
+### Direct API Architecture (No CLI Required)
+- **Faster response times** — Direct Anthropic API calls (~1 second with Haiku vs multi-second CLI overhead)
+- **Simpler setup** — Just need an API key, no Claude CLI installation required
+- **Built-in tools** — All 49 tools implemented in Python, no MCP server needed
+- **Model switching** — Easily switch between Haiku (fast), Sonnet (balanced), and Opus (powerful)
 
-### Semantic Trigger Phrases
-AI now recognizes natural language cues and calls appropriate tools:
-- "goodnight" → `end_session()`
-- "I'm stuck" → `get_hint()`
-- "I get it" → `get_diagnostic_question()` (verify!)
-- "ugh" → `infer_emotional_state()` + intervention
-
-### Auto-Create Concepts
-No more FOREIGN KEY errors - concepts are created on-the-fly when introduced.
-
-### Proactive Verification
-Mandatory inline verification after teaching complex concepts (no more skipping!).
+### Native Desktop App
+- **One-click installer** — Native app bundle with embedded WebKit (PyWebView)
+- **Streamlined Setup Wizard** — Just enter your API key to get started
+- **Dashboard pages** — Track progress, reviews, projects, and learning stats
+- **Auto-migrations** — Database schema updates automatically on app start
 
 ## Installation
 
+### Option 1: Desktop App (Recommended)
+
+Download `Avaia.app` from the releases page and drag to Applications. The setup wizard will:
+1. Ask for your Anthropic API key
+2. Initialize the learning database
+
+Or build from source:
+
 ```bash
-npm install -g @newdara/avaia
+cd gui
+pip install -r requirements.txt
+python server_webview.py        # Run in dev mode
+# OR
+./build_webview.sh              # Build native app → dist/Avaia.app
 ```
 
-## Quick Start
+### Option 2: Web Browser
+
+Run the server and access via browser:
 
 ```bash
-# 1. Initialize Avaia (creates ~/.avaia directory)
-avaia init
-
-# 2. Seed the database with curriculum
-cd ~/.avaia
-npx avaia-seed  # or manually: node -e "..."
-
-# 3. Configure Claude Code
-# Add to your Claude Code MCP settings:
+cd gui
+pip install -r requirements.txt
+python server_webview.py
+# Opens http://127.0.0.1:PORT automatically
 ```
 
-Add to `~/.claude/claude_desktop_config.json`:
+### Getting an API Key
 
-```json
-{
-  "mcpServers": {
-    "avaia": {
-      "command": "npx",
-      "args": ["avaia-server"]
-    }
-  }
-}
-```
+1. Go to [console.anthropic.com/settings/keys](https://console.anthropic.com/settings/keys)
+2. Create a new API key
+3. Enter it in the Avaia setup wizard
+
+Your API key is stored locally at `~/.avaia/api_key` and never sent anywhere except to Anthropic's API.
 
 ## Usage
 
-Once configured, Claude Code will have access to 42 pedagogical tools including:
+Once configured, you can chat with Avaia to learn programming. The AI has access to 49 pedagogical tools including:
 
-- `get_next_step` - Weakness-aware next action
-- `trigger_sandbox` - Designed failure exercises
-- `get_diagnostic_question` - Code prediction tasks
-- `infer_emotional_state` - Timing-based emotional detection
-- `get_hint` - Independence-based scaffolding
-- `log_review` - FSRS spaced repetition
+- `start_session` / `end_session` — Session lifecycle management
+- `get_next_step` — Weakness-aware next action
+- `trigger_sandbox` — Designed failure exercises
+- `get_diagnostic_question` — Code prediction tasks
+- `infer_emotional_state` — Timing-based emotional detection
+- `get_hint` — Independence-based scaffolding
+- `log_review` — FSRS spaced repetition
+- `select_track` — Change learning track
 
-## GUI (New in v1.1.0)
+## GUI Features
 
-Avaia includes a web-based GUI with:
+The desktop app includes:
 
-- **Gemini-style Layout** – Modern, responsive chat interface
-- **Voice Input/Output** – Speak to Avaia and hear responses read aloud
-- **Persistent Chat History** – Conversations saved per learner
-- **Model Selection** – Switch between available AI models
-- **Message Actions** – Copy, read aloud, and more
+- **Setup Wizard** — Streamlined onboarding (just need API key)
+- **Dashboard** — Stats overview with time, concepts, streak tracking
+- **My Learning** — Mastered vs learning concepts, vocabulary
+- **Projects** — Track progress through milestones
+- **Reviews** — Interactive SRS cards with code snippets
+- **Chat Interface** — Real-time streaming with syntax highlighting
+- **Model Selector** — Switch between Haiku/Sonnet/Opus
 
-To start the GUI:
+## Learning Tracks
 
-```bash
-cd ~/.avaia/gui
-python app.py
-```
+Avaia includes 8 pre-seeded learning tracks:
 
-Then open `http://localhost:5001` in your browser.
-
-## CLI Commands
-
-```bash
-avaia init    # Initialize ~/.avaia directory
-avaia         # Start learning session (wraps Claude Code)
-```
+| Track | Language | Focus |
+|-------|----------|-------|
+| JavaScript Web Development | JavaScript | DOM, events, async, full-stack |
+| Python Data Science | Python | pandas, numpy, visualization |
+| C Systems Programming | C | Memory, pointers, systems |
+| Software Engineering Fundamentals | JavaScript | Design patterns, architecture, distributed systems |
+| Data Structures & Algorithms | Language-agnostic | Core CS fundamentals |
+| CS Theory | Theory | Complexity, automata, proofs |
+| ML Engineering | Python | PyTorch, training, deployment |
+| Avaia Core | JavaScript | The default beginner track |
 
 ## How It Works
 
@@ -134,14 +135,41 @@ Based on research in:
 - Desirable Difficulties (Bjork)
 - Spaced Repetition (FSRS-5)
 
+## Architecture
+
+Avaia uses a direct Anthropic API architecture:
+
+```
+┌─────────────────────────────────────────────────────┐
+│                  Avaia Desktop App                  │
+├─────────────────────────────────────────────────────┤
+│  PyWebView (Native WebKit)                          │
+│  ├── Flask Server (backend)                         │
+│  │   ├── Socket.IO (real-time chat)                 │
+│  │   ├── REST API (dashboard, reviews)              │
+│  │   └── SQLite (learner data, curriculum)          │
+│  └── avaia_tools.py (49 learning tools)             │
+├─────────────────────────────────────────────────────┤
+│  Anthropic API (Claude Haiku/Sonnet/Opus)           │
+│  ├── Direct API calls (no CLI overhead)             │
+│  ├── Tool calling (function execution)              │
+│  └── Streaming responses                            │
+└─────────────────────────────────────────────────────┘
+```
+
 ## Development
 
 ```bash
-git clone https://github.com/yourusername/avaia
+git clone https://github.com/NewDara-Star/avaia
 cd avaia
-npm install
-npm run build
-npm run db:seed
+
+# Run the desktop app in dev mode
+cd gui
+pip install -r requirements.txt
+python server_webview.py
+
+# Run tests
+python test_tools.py
 ```
 
 ## License

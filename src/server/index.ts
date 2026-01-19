@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 /**
  * Avaia MCP Server Entry Point
  * Cognitive AI Teacher with pedagogical tools
@@ -15,6 +16,7 @@ import { registerVerifyTools } from './tools/verify.js';
 import { registerContentTools } from './tools/content.js';
 import { registerSessionTools } from './tools/session.js';
 import { registerProjectTools } from './tools/project.js';
+import { registerTrackTools } from './tools/track.js';
 
 // =============================================================================
 // Server Setup
@@ -36,6 +38,7 @@ function registerAllTools(): void {
     registerContentTools(server);
     registerSessionTools(server);
     registerProjectTools(server);
+    registerTrackTools(server);
 }
 
 // =============================================================================

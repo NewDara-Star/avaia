@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Learning - Avaia</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap"
+        rel="stylesheet">
+    <script src="/static/shared.js"></script>
+</head>
+
+<body>
+    <div class="app">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <a href="/" class="new-chat-btn">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M12 5v14M5 12h14" />
+                    </svg>
+                    New chat
+                </a>
+            </div>
+
+            <!-- Navigation -->
+            <nav class="sidebar-nav">
+                <a href="/" class="nav-item" data-page="chat">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                    </svg>
+                    <span>Chat</span>
+                </a>
+                <a href="/dashboard" class="nav-item" data-page="dashboard">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="3" y="3" width="7" height="7"/>
+                        <rect x="14" y="3" width="7" height="7"/>
+                        <rect x="14" y="14" width="7" height="7"/>
+                        <rect x="3" y="14" width="7" height="7"/>
+                    </svg>
+                    <span>Dashboard</span>
+                </a>
+                <a href="/learning" class="nav-item active" data-page="learning">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/>
+                        <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>
+                    </svg>
+                    <span>My Learning</span>
+                </a>
+                <a href="/projects" class="nav-item" data-page="projects">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+                    </svg>
+                    <span>Projects</span>
+                </a>
+                <a href="/reviews" class="nav-item" data-page="reviews">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="23 4 23 10 17 10"/>
+                        <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+                    </svg>
+                    <span>Reviews</span>
+                </a>
+            </nav>
+
+            <div class="sidebar-divider"></div>
+
+            <!-- Learner Settings -->
+            <div class="sidebar-settings" style="margin-top: auto;">
+                <div class="settings-section">
+                    <label class="settings-label" for="learnerIdInput">Learner ID</label>
+                    <div class="settings-input-wrapper">
+                        <input
+                            type="text"
+                            id="learnerIdInput"
+                            class="settings-input"
+                            placeholder="learner_xxxxx"
+                            spellcheck="false"
+                            readonly
+                        >
+                    </div>
+                    <p class="settings-hint" id="learnerName"></p>
+                </div>
+            </div>
+
+            <div class="sidebar-footer">
+                <div class="status-indicator" id="status">
+                    <span class="status-dot" id="statusDot"></span>
+                    <span class="status-text" id="statusText">Loading...</span>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <header class="main-header">
+                <button class="menu-toggle" id="menuToggle">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M3 12h18M3 6h18M3 18h18" />
+                    </svg>
+                </button>
+                <div class="model-selector">
+                    <span class="model-name">My Learning</span>
+                    <span class="model-badge">Concepts</span>
+                </div>
+            </header>
+
+            <div class="page-content" id="pageContent">
+                <!-- Concept Summary -->
+                <div class="concept-summary">
+                    <div class="summary-stat">
+                        <span class="summary-value" id="masteredCount">0</span>
+                        <span class="summary-label">Mastered</span>
+                    </div>
+                    <div class="summary-stat">
+                        <span class="summary-value" id="learningCount">0</span>
+                        <span class="summary-label">Learning</span>
+                    </div>
+                    <div class="summary-stat">
+                        <span class="summary-value" id="termsCount">0</span>
+                        <span class="summary-label">Terms Known</span>
+                    </div>
+                </div>
+
+                <!-- Tabs -->
+                <div class="tabs">
+                    <button class="tab active" data-tab="mastered">Mastered</button>
+                    <button class="tab" data-tab="learning">Learning</button>
+                    <button class="tab" data-tab="vocabulary">Vocabulary</button>
+                </div>
+
+                <!-- Tab Content -->
+                <div class="tab-content active" id="mastered-tab">
+                    <div class="concept-grid" id="masteredConcepts">
+                        <p class="empty-state">No concepts mastered yet. Keep learning!</p>
+                    </div>
+                </div>
+
+                <div class="tab-content" id="learning-tab">
+                    <div class="concept-grid" id="learningConcepts">
+                        <p class="empty-state">No concepts in progress.</p>
+                    </div>
+                </div>
+
+                <div class="tab-content" id="vocabulary-tab">
+                    <div class="vocabulary-search">
+                        <input type="text" id="vocabSearch" placeholder="Search terms..." class="search-input">
+                    </div>
+                    <div class="vocabulary-list" id="vocabularyList">
+                        <p class="empty-state">No vocabulary terms yet.</p>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        // State
+        let allTerms = [];
+
+        // Status management
+        function setStatus(connected, text) {
+            const dot = document.getElementById('statusDot');
+            const textEl = document.getElementById('statusText');
+            dot.className = 'status-dot ' + (connected ? 'connected' : 'disconnected');
+            textEl.textContent = text;
+        }
+
+        async function loadLearningData(learnerId) {
+            setStatus(false, 'Loading...');
+            document.getElementById('statusDot').classList.add('connecting');
+
+            try {
+                const data = await apiGet(`/api/learning?learner_id=${encodeURIComponent(learnerId)}`);
+                renderLearning(data);
+                setStatus(true, 'Connected');
+            } catch (error) {
+                console.error('Failed to load learning data:', error);
+                setStatus(false, 'Error');
+                showError('pageContent', `Failed to load learning data: ${error.message}`, () => loadLearningData(learnerId));
+            }
+        }
+
+        function renderLearning(data) {
+            // Update counts
+            document.getElementById('masteredCount').textContent = data.mastered?.length || 0;
+            document.getElementById('learningCount').textContent = data.learning?.length || 0;
+            document.getElementById('termsCount').textContent = data.terms?.length || 0;
+
+            // Mastered concepts
+            if (data.mastered && data.mastered.length > 0) {
+                document.getElementById('masteredConcepts').innerHTML = data.mastered.map(c => `
+                    <div class="concept-card mastered">
+                        <div class="concept-icon">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                                <polyline points="22 4 12 14.01 9 11.01"/>
+                            </svg>
+                        </div>
+                        <h4>${c.name || c.concept_id}</h4>
+                        <p class="concept-context">${c.context || ''}</p>
+                    </div>
+                `).join('');
+            } else {
+                document.getElementById('masteredConcepts').innerHTML = `
+                    <p class="empty-state">No concepts mastered yet. Keep learning!</p>
+                `;
+            }
+
+            // Learning concepts
+            if (data.learning && data.learning.length > 0) {
+                document.getElementById('learningConcepts').innerHTML = data.learning.map(c => `
+                    <div class="concept-card learning">
+                        <div class="concept-icon">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="12" cy="12" r="10"/>
+                                <polyline points="12 6 12 12 16 14"/>
+                            </svg>
+                        </div>
+                        <h4>${c.name || c.concept_id}</h4>
+                        <p class="concept-context">${c.context || ''}</p>
+                        <div class="concept-progress">
+                            <div class="mini-progress-bar">
+                                <div class="mini-progress-fill" style="width: ${c.independence_score || 0}%"></div>
+                            </div>
+                            <span>Independence: ${c.independence_score || 0}%</span>
+                        </div>
+                    </div>
+                `).join('');
+            } else {
+                document.getElementById('learningConcepts').innerHTML = `
+                    <p class="empty-state">No concepts in progress. <a href="/">Start learning</a>!</p>
+                `;
+            }
+
+            // Vocabulary - store in global variable for search
+            allTerms = data.terms || [];
+            renderVocabulary(allTerms);
+        }
+
+        function renderVocabulary(terms, filter = '') {
+            const filtered = filter
+                ? terms.filter(t =>
+                    t.term.toLowerCase().includes(filter.toLowerCase()) ||
+                    t.definition.toLowerCase().includes(filter.toLowerCase())
+                  )
+                : terms;
+
+            if (filtered.length === 0) {
+                document.getElementById('vocabularyList').innerHTML = filter
+                    ? '<p class="empty-state">No matching terms found.</p>'
+                    : '<p class="empty-state">No vocabulary terms yet. Terms will appear here as you learn.</p>';
+                return;
+            }
+
+            document.getElementById('vocabularyList').innerHTML = filtered.map(t => `
+                <div class="vocab-item">
+                    <dt class="vocab-term">${escapeHtml(t.term)}</dt>
+                    <dd class="vocab-definition">${escapeHtml(t.definition)}</dd>
+                </div>
+            `).join('');
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Tab switching
+        document.querySelectorAll('.tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+                tab.classList.add('active');
+                document.getElementById(`${tab.dataset.tab}-tab`).classList.add('active');
+            });
+        });
+
+        // Vocabulary search - now works because allTerms is populated
+        document.getElementById('vocabSearch').addEventListener('input', (e) => {
+            renderVocabulary(allTerms, e.target.value);
+        });
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            initializeLearner((learnerId) => {
+                document.getElementById('learnerIdInput').value = learnerId;
+                const name = getLearnerName();
+                if (name) {
+                    document.getElementById('learnerName').textContent = name;
+                }
+                loadLearningData(learnerId);
+            }, 'pageContent');
+        });
+    </script>
+</body>
+
+</html>

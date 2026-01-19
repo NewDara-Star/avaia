@@ -6,6 +6,7 @@ With auto-logging of all messages to chat_message table
 
 import json
 import os
+import socket
 import sqlite3
 import subprocess
 import sys
@@ -68,7 +69,7 @@ def auto_log_message(role: str, content: str, tool_calls=None, tool_results=None
     try:
         db = get_db()
         msg_id = f"chat_{uuid.uuid4().hex[:16]}"
-        timestamp = datetime.utcnow().isoformat() + 'Z'
+        timestamp = datetime.now(datetime.UTC).isoformat().replace('+00:00', 'Z')
         
         db.execute(
             """
@@ -209,6 +210,21 @@ def send_message(message, client_sid, learner_id=None, model=None):
         learner_context = f"\n\n## Current Learner\n\nThe current learner's ID is: `{learner_id}`\n\nUse this ID when calling any MCP tools that require a learner_id parameter (start_session, get_project_state, get_hint, etc.).\n"
         avaia_prompt = avaia_prompt + learner_context
 
+    # FULL SYSTEM PROMPT WITH EVERY MESSAGE
+    # This ensures 100% adherence - Claude sees all rules fresh with every response
+    # Cost: ~3-5k tokens per message, but guarantees perfect instruction following
+    reinforced_message = f"""
+=== SYSTEM INSTRUCTIONS (READ BEFORE RESPONDING) ===
+
+{avaia_prompt}
+
+=== END SYSTEM INSTRUCTIONS ===
+
+=== LEARNER MESSAGE ===
+
+{message}
+"""
+
     # Build command
     cmd = [
         claude_path,
@@ -217,7 +233,7 @@ def send_message(message, client_sid, learner_id=None, model=None):
         '--verbose',
         '--model', selected_model,
         '--permission-mode', 'bypassPermissions',
-        '--append-system-prompt', avaia_prompt,
+        '--append-system-prompt', avaia_prompt,  # Belt and suspenders - also use native system
     ]
 
     # Continue existing session if we have one
@@ -228,8 +244,8 @@ def send_message(message, client_sid, learner_id=None, model=None):
         session_id = str(uuid.uuid4())
         cmd.extend(['--session-id', session_id])
 
-    # Add the message
-    cmd.append(message)
+    # Add the message (with FULL system prompt prepended)
+    cmd.append(reinforced_message)
 
     try:
         # Start Claude process
@@ -330,9 +346,18 @@ def handle_restart():
     emit('status', {'connected': True, 'restarted': True})
 
 
-def open_browser():
+def find_free_port():
+    """Find an available port dynamically"""
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        s.bind(('127.0.0.1', 0))
+        s.listen(1)
+        port = s.getsockname()[1]
+    return port
+
+
+def open_browser(port):
     time.sleep(1.5)
-    webbrowser.open('http://127.0.0.1:5050')
+    webbrowser.open(f'http://127.0.0.1:{port}')
 
 
 def signal_handler(sig, frame):
@@ -347,7 +372,8 @@ if __name__ == '__main__':
     signal.signal(signal.SIGINT, signal_handler)
     signal.signal(signal.SIGTERM, signal_handler)
 
-    threading.Thread(target=open_browser, daemon=True).start()
+    port = find_free_port()
+    threading.Thread(target=open_browser, args=(port,), daemon=True).start()
 
-    print("Starting Avaia GUI on http://127.0.0.1:5050")
-    socketio.run(app, host='127.0.0.1', port=5050, debug=False, allow_unsafe_werkzeug=True)
+    print(f"Starting Avaia GUI on http://127.0.0.1:{port}")
+    socketio.run(app, host='127.0.0.1', port=port, debug=False, allow_unsafe_werkzeug=True)

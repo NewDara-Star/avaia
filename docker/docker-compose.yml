@@ -1,0 +1,41 @@
+# Avaia Onboarding Test Environment
+# For internal testing only - simulates fresh user experience
+#
+# Run from project root:
+#   docker-compose -f docker/docker-compose.yml run fresh-user
+
+services:
+  avaia-test:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    environment:
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+      - HEADLESS=1
+    volumes:
+      - ./results:/home/testuser/results
+    stdin_open: true
+    tty: true
+
+  fresh-user:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    command: ["python3", "-c", "import sys; sys.path.insert(0, '/home/testuser/avaia'); from setup_wizard import preflight_check; status = preflight_check(); import json; print(json.dumps(status.to_dict(), indent=2)); assert not status.claude_cli.installed, 'Claude should NOT be installed'; assert not status.auth.authenticated, 'Should NOT be authenticated'; print('✓ Fresh user test passed')"]
+
+  with-claude:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    command: >
+      bash -c "
+      curl -fsSL https://claude.ai/install.sh | bash
+      python3 -c \"
+      import sys
+      sys.path.insert(0, '/home/testuser/avaia')
+      from setup_wizard import check_claude_cli
+      status = check_claude_cli()
+      print('Claude CLI installed:', status.installed)
+      print('Version:', status.version)
+      \"
+      "

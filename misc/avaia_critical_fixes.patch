@@ -1,0 +1,418 @@
+# AVAIA CRITICAL FIXES - READY TO APPLY
+# Date: 2026-01-18
+# Apply these 3 patches to fix critical bugs
+
+================================================================================
+PATCH #1: Fix log_sandbox_reflection() UPDATE query
+================================================================================
+File: src/server/tools/sandbox.ts
+Line: ~165
+
+BEFORE:
+```typescript
+async function logSandboxReflection(args: z.infer<typeof LogSandboxReflectionInput>) {
+    const db = getDatabase();
+
+    // Update most recent attempt with articulation quality
+    db.prepare(`
+    UPDATE sandbox_attempt
+    SET articulation_quality = ?
+    WHERE sandbox_id = ? AND learner_id = ?
+    ORDER BY timestamp DESC
+    LIMIT 1
+  `).run(args.quality, args.sandbox_id, args.learner_id);
+
+    // Get teaching transition
+    const sandbox = db.prepare(`
+    SELECT teaching_transition FROM sandbox WHERE id = ?
+  `).get(args.sandbox_id) as { teaching_transition: string | null } | undefined;
+
+    return {
+        message: 'Reflection logged',
+        ready_to_teach: args.quality !== 'none',
+        teaching_transition: sandbox?.teaching_transition || 'Now let\'s understand why this happened...',
+    };
+}
+```
+
+AFTER:
+```typescript
+async function logSandboxReflection(args: z.infer<typeof LogSandboxReflectionInput>) {
+    const db = getDatabase();
+
+    // Find the most recent attempt's ROWID
+    const rowId = db.prepare(`
+        SELECT rowid FROM sandbox_attempt
+        WHERE sandbox_id = ? AND learner_id = ?
+        ORDER BY timestamp DESC
+        LIMIT 1
+    `).get(args.sandbox_id, args.learner_id) as { rowid: number } | undefined;
+
+    if (!rowId) {
+        return {
+            error: 'No sandbox attempts found for this learner',
+            sandbox_id: args.sandbox_id,
+            learner_id: args.learner_id,
+        };
+    }
+
+    // Update the specific row using ROWID
+    db.prepare(`
+        UPDATE sandbox_attempt
+        SET articulation_quality = ?
+        WHERE rowid = ?
+    `).run(args.quality, rowId.rowid);
+
+    // Get teaching transition
+    const sandbox = db.prepare(`
+        SELECT teaching_transition FROM sandbox WHERE id = ?
+    `).get(args.sandbox_id) as { teaching_transition: string | null } | undefined;
+
+    return {
+        message: 'Reflection logged',
+        ready_to_teach: args.quality !== 'none',
+        teaching_transition: sandbox?.teaching_transition || 'Now let\'s understand why this happened...',
+    };
+}
+```
+
+EXPLANATION:
+- SQLite doesn't support ORDER BY in UPDATE statements
+- Solution: Use subquery to find ROWID first, then update by ROWID
+- Added error handling for case where no attempts exist
+
+================================================================================
+PATCH #2: Add transaction wrapper to seed_dynamic_track()
+================================================================================
+File: src/server/tools/track.ts
+Line: ~240
+
+BEFORE:
+```typescript
+async function seedDynamicTrack(args: z.infer<typeof SeedDynamicTrackInput>) {
+    const db = getDatabase();
+
+    let data: {
+        // ... type definition
+    };
+
+    try {
+        data = JSON.parse(args.track_json);
+    } catch (e) {
+        return { error: 'Invalid JSON', details: String(e) };
+    }
+
+    const trackId = data.track.id || generateId('track');
+
+    // Insert learning track
+    db.prepare(`
+        INSERT INTO learning_track (id, name, description, language, domain, difficulty, is_preseeded, created_by)
+        VALUES (?, ?, ?, ?, ?, ?, FALSE, ?)
+    `).run(
+        trackId,
+        data.track.name,
+        data.track.description || null,
+        data.track.language || null,
+        data.track.domain || null,
+        data.track.difficulty || 'beginner',
+        args.learner_id
+    );
+
+    let projectsCreated = 0;
+    let conceptsCreated = 0;
+
+    // Insert projects
+    for (const project of data.projects) {
+        const templateId = generateId('template');
+
+        db.prepare(`
+            INSERT INTO project_template (id, track_id, sequence_order, name, description, estimated_hours, milestones)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        `).run(
+            templateId,
+            trackId,
+            project.sequence_order,
+            project.name,
+            project.description || null,
+            project.estimated_hours || null,
+            toJson(project.milestones)
+        );
+        projectsCreated++;
+
+        // Insert milestone-concept mappings
+        for (const milestone of project.milestones) {
+            if (milestone.concepts) {
+                for (const concept of milestone.concepts) {
+                    // Auto-create concept if it doesn't exist
+                    const existingConcept = db.prepare('SELECT id FROM concept WHERE id = ?').get(concept.id);
+                    if (!existingConcept) {
+                        db.prepare(`
+                            INSERT INTO concept (id, name, category)
+                            VALUES (?, ?, 'Dynamic')
+                        `).run(concept.id, concept.name);
+                        conceptsCreated++;
+                    }
+
+                    // Insert milestone-concept mapping
+                    db.prepare(`
+                        INSERT OR IGNORE INTO milestone_concept (project_template_id, milestone_number, concept_id, relationship)
+                        VALUES (?, ?, ?, ?)
+                    `).run(templateId, milestone.id, concept.id, concept.relationship || 'introduces');
+                }
+            }
+        }
+    }
+
+    // Assign learner to this track
+    db.prepare(`UPDATE learner SET current_track_id = ? WHERE id = ?`).run(trackId, args.learner_id);
+
+    return {
+        success: true,
+        track_id: trackId,
+        track_name: data.track.name,
+        projects_created: projectsCreated,
+        concepts_created: conceptsCreated,
+        message: `Created learning track "${data.track.name}" with ${projectsCreated} projects. Learner assigned to track.`,
+        next_step: 'Call select_learning_track() to start the first project, or it will start automatically.',
+    };
+}
+```
+
+AFTER:
+```typescript
+async function seedDynamicTrack(args: z.infer<typeof SeedDynamicTrackInput>) {
+    const db = getDatabase();
+
+    let data: {
+        // ... type definition (unchanged)
+    };
+
+    try {
+        data = JSON.parse(args.track_json);
+    } catch (e) {
+        return { error: 'Invalid JSON', details: String(e) };
+    }
+
+    const trackId = data.track.id || generateId('track');
+
+    // Wrap ALL inserts in a transaction for atomicity
+    const transaction = db.transaction(() => {
+        // Insert learning track
+        db.prepare(`
+            INSERT INTO learning_track (id, name, description, language, domain, difficulty, is_preseeded, created_by)
+            VALUES (?, ?, ?, ?, ?, ?, FALSE, ?)
+        `).run(
+            trackId,
+            data.track.name,
+            data.track.description || null,
+            data.track.language || null,
+            data.track.domain || null,
+            data.track.difficulty || 'beginner',
+            args.learner_id
+        );
+
+        let projectsCreated = 0;
+        let conceptsCreated = 0;
+
+        // Insert projects
+        for (const project of data.projects) {
+            const templateId = generateId('template');
+
+            db.prepare(`
+                INSERT INTO project_template (id, track_id, sequence_order, name, description, estimated_hours, milestones)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            `).run(
+                templateId,
+                trackId,
+                project.sequence_order,
+                project.name,
+                project.description || null,
+                project.estimated_hours || null,
+                toJson(project.milestones)
+            );
+            projectsCreated++;
+
+            // Insert milestone-concept mappings
+            for (const milestone of project.milestones) {
+                if (milestone.concepts) {
+                    for (const concept of milestone.concepts) {
+                        // Auto-create concept if it doesn't exist
+                        const existingConcept = db.prepare('SELECT id FROM concept WHERE id = ?').get(concept.id);
+                        if (!existingConcept) {
+                            db.prepare(`
+                                INSERT INTO concept (id, name, category)
+                                VALUES (?, ?, 'Dynamic')
+                            `).run(concept.id, concept.name);
+                            conceptsCreated++;
+                        }
+
+                        // Insert milestone-concept mapping
+                        db.prepare(`
+                            INSERT OR IGNORE INTO milestone_concept (project_template_id, milestone_number, concept_id, relationship)
+                            VALUES (?, ?, ?, ?)
+                        `).run(templateId, milestone.id, concept.id, concept.relationship || 'introduces');
+                    }
+                }
+            }
+        }
+
+        // Assign learner to this track
+        db.prepare(`UPDATE learner SET current_track_id = ? WHERE id = ?`).run(trackId, args.learner_id);
+
+        return { projectsCreated, conceptsCreated };
+    });
+
+    // Execute transaction
+    try {
+        const { projectsCreated, conceptsCreated } = transaction();
+
+        return {
+            success: true,
+            track_id: trackId,
+            track_name: data.track.name,
+            projects_created: projectsCreated,
+            concepts_created: conceptsCreated,
+            message: `Created learning track "${data.track.name}" with ${projectsCreated} projects. Learner assigned to track.`,
+            next_step: 'Call select_learning_track() to start the first project, or it will start automatically.',
+        };
+    } catch (e) {
+        return {
+            error: 'Transaction failed - database rolled back',
+            details: String(e),
+            track_id: trackId,
+        };
+    }
+}
+```
+
+EXPLANATION:
+- Wraps all inserts in a transaction
+- If any insert fails, entire operation rolls back
+- Prevents partial track creation
+- Returns error with details if transaction fails
+
+================================================================================
+PATCH #3: Fix race condition in advance_milestone()
+================================================================================
+File: src/server/tools/project.ts
+Line: ~135
+
+BEFORE:
+```typescript
+async function advanceMilestone(args: z.infer<typeof AdvanceMilestoneInput>) {
+    const db = getDatabase();
+
+    // Get current project state
+    const project = db.prepare(`
+    SELECT milestones_completed, current_milestone FROM project WHERE id = ?
+  `).get(args.project_id) as {
+        milestones_completed: string;
+        current_milestone: number;
+    } | undefined;
+
+    if (!project) {
+        return { error: 'Project not found' };
+    }
+
+    const completed = parseJson<number[]>(project.milestones_completed, []);
+
+    if (!completed.includes(args.milestone_id)) {
+        completed.push(args.milestone_id);
+    }
+
+    const nextMilestone = args.milestone_id + 1;
+
+    db.prepare(`
+    UPDATE project
+    SET milestones_completed = ?, current_milestone = ?
+    WHERE id = ?
+  `).run(toJson(completed), nextMilestone, args.project_id);
+
+    return {
+        milestone_completed: args.milestone_id,
+        next_milestone: nextMilestone,
+        total_completed: completed.length,
+        message: `Milestone ${args.milestone_id} completed! Moving to milestone ${nextMilestone}.`,
+    };
+}
+```
+
+AFTER:
+```typescript
+async function advanceMilestone(args: z.infer<typeof AdvanceMilestoneInput>) {
+    const db = getDatabase();
+
+    // Check current state for idempotency
+    const project = db.prepare(`
+        SELECT milestones_completed, current_milestone FROM project WHERE id = ?
+    `).get(args.project_id) as {
+        milestones_completed: string;
+        current_milestone: number;
+    } | undefined;
+
+    if (!project) {
+        return { error: 'Project not found' };
+    }
+
+    const completed = parseJson<number[]>(project.milestones_completed, []);
+
+    // Idempotency check: if already completed, just return success
+    if (completed.includes(args.milestone_id)) {
+        return {
+            milestone_completed: args.milestone_id,
+            next_milestone: args.milestone_id + 1,
+            total_completed: completed.length,
+            message: `Milestone ${args.milestone_id} already completed.`,
+        };
+    }
+
+    const nextMilestone = args.milestone_id + 1;
+
+    // Use atomic JSON append to prevent race conditions
+    db.prepare(`
+        UPDATE project
+        SET milestones_completed = json_insert(milestones_completed, '$[#]', ?),
+            current_milestone = ?
+        WHERE id = ?
+    `).run(args.milestone_id, nextMilestone, args.project_id);
+
+    return {
+        milestone_completed: args.milestone_id,
+        next_milestone: nextMilestone,
+        total_completed: completed.length + 1,
+        message: `Milestone ${args.milestone_id} completed! Moving to milestone ${nextMilestone}.`,
+    };
+}
+```
+
+EXPLANATION:
+- Uses SQLite's atomic `json_insert()` function instead of read-modify-write
+- Adds idempotency check to handle duplicate calls gracefully
+- Prevents race condition where concurrent calls overwrite each other
+- `$[#]` means "append to end of array"
+
+================================================================================
+TESTING CHECKLIST
+================================================================================
+
+After applying patches, test:
+
+1. Sandbox Reflection:
+   - [ ] Complete a sandbox exercise with multiple attempts
+   - [ ] Call log_sandbox_reflection() 
+   - [ ] Verify articulation_quality is set on most recent attempt only
+   - [ ] Verify older attempts are not modified
+
+2. Dynamic Track Seeding:
+   - [ ] Call seed_dynamic_track() with valid JSON
+   - [ ] Verify all tables populated correctly
+   - [ ] Call seed_dynamic_track() with invalid JSON (should rollback)
+   - [ ] Verify no partial data in database
+
+3. Milestone Advancement:
+   - [ ] Call advance_milestone() twice with same milestone_id
+   - [ ] Verify milestone only appears once in milestones_completed
+   - [ ] Simulate concurrent calls (if possible) with different milestone_ids
+   - [ ] Verify both milestones recorded correctly
+
+================================================================================

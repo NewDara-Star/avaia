@@ -1,11 +1,12 @@
 {
   "name": "@newdara/avaia",
-  "version": "1.2.0",
+  "version": "1.4.0",
   "description": "Proactive AI Programming Teacher - MCP server for Claude Code",
   "type": "module",
   "main": "dist/server/index.js",
   "bin": {
-    "avaia": "dist/client/index.js"
+    "avaia": "dist/server/index.js",
+    "avaia-teach": "dist/client/index.js"
   },
   "scripts": {
     "build": "tsc && npm run postbuild",
@@ -15,6 +16,7 @@
     "test": "vitest",
     "db:migrate": "tsx scripts/migrate.ts",
     "db:seed": "tsx scripts/seed.ts",
+    "db:seed-all": "tsx scripts/seed-all-tracks.ts",
     "prepublishOnly": "npm run build"
   },
   "files": [

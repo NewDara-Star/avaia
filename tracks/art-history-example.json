@@ -1,0 +1,218 @@
+{
+  "_comment": "Example track: Art History. This shows how to structure a non-programming track.",
+
+  "track": {
+    "id": "art-history",
+    "name": "Art History Foundations",
+    "description": "Learn to analyze, interpret, and appreciate art through hands-on projects. From visual analysis to cultural context, develop the skills to engage deeply with any artwork.",
+    "language": null,
+    "domain": "humanities",
+    "difficulty": "beginner"
+  },
+
+  "concepts": [
+    {
+      "id": "visual-analysis",
+      "name": "Visual Analysis",
+      "category": "Foundations",
+      "cluster": "formal-analysis",
+      "prerequisites": [],
+      "sandbox_id": null
+    },
+    {
+      "id": "formal-elements",
+      "name": "Formal Elements",
+      "category": "Foundations",
+      "cluster": "formal-analysis",
+      "prerequisites": ["visual-analysis"],
+      "sandbox_id": null
+    },
+    {
+      "id": "line-and-shape",
+      "name": "Line and Shape",
+      "category": "Elements",
+      "cluster": "formal-analysis",
+      "prerequisites": ["formal-elements"],
+      "sandbox_id": null
+    },
+    {
+      "id": "color-theory",
+      "name": "Color Theory",
+      "category": "Elements",
+      "cluster": "formal-analysis",
+      "prerequisites": ["formal-elements"],
+      "sandbox_id": null
+    },
+    {
+      "id": "composition",
+      "name": "Composition",
+      "category": "Elements",
+      "cluster": "formal-analysis",
+      "prerequisites": ["line-and-shape"],
+      "sandbox_id": null
+    },
+    {
+      "id": "iconography",
+      "name": "Iconography",
+      "category": "Interpretation",
+      "cluster": "meaning",
+      "prerequisites": ["visual-analysis"],
+      "sandbox_id": null
+    },
+    {
+      "id": "historical-context",
+      "name": "Historical Context",
+      "category": "Interpretation",
+      "cluster": "context",
+      "prerequisites": [],
+      "sandbox_id": null
+    },
+    {
+      "id": "patronage",
+      "name": "Patronage",
+      "category": "Interpretation",
+      "cluster": "context",
+      "prerequisites": ["historical-context"],
+      "sandbox_id": null
+    },
+    {
+      "id": "style-identification",
+      "name": "Style Identification",
+      "category": "Analysis",
+      "cluster": "classification",
+      "prerequisites": ["formal-elements", "historical-context"],
+      "sandbox_id": null
+    },
+    {
+      "id": "comparative-analysis",
+      "name": "Comparative Analysis",
+      "category": "Analysis",
+      "cluster": null,
+      "prerequisites": ["style-identification"],
+      "sandbox_id": null
+    }
+  ],
+
+  "projects": [
+    {
+      "id": "museum-guide",
+      "sequence_order": 1,
+      "name": "Personal Museum Guide",
+      "description": "Create a curated guide to 5 artworks that moved you. Learn to describe what you see and articulate why art affects you.",
+      "estimated_hours": 8,
+      "milestones": [
+        {"id": 1, "name": "Select Works", "description": "Choose 5 artworks from any museum or online collection"},
+        {"id": 2, "name": "Describe What You See", "description": "Write purely visual descriptions—no research yet"},
+        {"id": 3, "name": "Identify Elements", "description": "Break down line, color, shape, composition"},
+        {"id": 4, "name": "Personal Response", "description": "Articulate your emotional/intellectual response"},
+        {"id": 5, "name": "Compile Guide", "description": "Assemble into a shareable document"}
+      ],
+      "milestone_concepts": [
+        {"milestone": 2, "concept_id": "visual-analysis", "relationship": "introduces"},
+        {"milestone": 3, "concept_id": "formal-elements", "relationship": "introduces"},
+        {"milestone": 3, "concept_id": "line-and-shape", "relationship": "introduces"},
+        {"milestone": 3, "concept_id": "color-theory", "relationship": "introduces"},
+        {"milestone": 3, "concept_id": "composition", "relationship": "introduces"}
+      ]
+    },
+    {
+      "id": "art-detective",
+      "sequence_order": 2,
+      "name": "Art Detective",
+      "description": "Given an unknown artwork, research and identify its origins. Learn to use visual clues and historical context.",
+      "estimated_hours": 12,
+      "milestones": [
+        {"id": 1, "name": "Visual Inventory", "description": "Document everything visible in the work"},
+        {"id": 2, "name": "Style Clues", "description": "Identify stylistic markers that suggest period/region"},
+        {"id": 3, "name": "Iconographic Analysis", "description": "Research symbols, figures, and narratives"},
+        {"id": 4, "name": "Historical Research", "description": "Connect to historical events and patronage"},
+        {"id": 5, "name": "Attribution Report", "description": "Write up your findings with evidence"}
+      ],
+      "milestone_concepts": [
+        {"milestone": 1, "concept_id": "visual-analysis", "relationship": "reinforces"},
+        {"milestone": 2, "concept_id": "style-identification", "relationship": "introduces"},
+        {"milestone": 3, "concept_id": "iconography", "relationship": "introduces"},
+        {"milestone": 4, "concept_id": "historical-context", "relationship": "introduces"},
+        {"milestone": 4, "concept_id": "patronage", "relationship": "introduces"}
+      ]
+    },
+    {
+      "id": "comparison-essay",
+      "sequence_order": 3,
+      "name": "Comparative Analysis Essay",
+      "description": "Write a scholarly comparison of two artworks. Master the art of drawing meaningful connections.",
+      "estimated_hours": 15,
+      "milestones": [
+        {"id": 1, "name": "Select Pair", "description": "Choose two works with an interesting relationship"},
+        {"id": 2, "name": "Individual Analysis", "description": "Analyze each work separately"},
+        {"id": 3, "name": "Identify Connections", "description": "Find formal, thematic, or historical links"},
+        {"id": 4, "name": "Develop Thesis", "description": "Craft an argument about their relationship"},
+        {"id": 5, "name": "Write Essay", "description": "Compose a well-structured comparative essay"}
+      ],
+      "milestone_concepts": [
+        {"milestone": 2, "concept_id": "visual-analysis", "relationship": "reinforces"},
+        {"milestone": 2, "concept_id": "formal-elements", "relationship": "reinforces"},
+        {"milestone": 3, "concept_id": "comparative-analysis", "relationship": "introduces"}
+      ]
+    }
+  ],
+
+  "misconceptions": [
+    {
+      "id": "art-misc-001",
+      "concept_id": "visual-analysis",
+      "name": "Immediate Interpretation",
+      "description": "Jumping to meaning before describing what's actually visible",
+      "trigger_answer": "This painting represents the artist's sadness",
+      "remediation_strategy": "Separate observation from interpretation. First: What do you SEE? Only then: What might it MEAN?",
+      "contrasting_case": null
+    },
+    {
+      "id": "art-misc-002",
+      "concept_id": "iconography",
+      "name": "Universal Symbolism",
+      "description": "Assuming symbols mean the same thing across all cultures and time periods",
+      "trigger_answer": "A skull always means death",
+      "remediation_strategy": "Symbols are culturally specific. Research the specific time and place to understand intended meaning.",
+      "contrasting_case": null
+    },
+    {
+      "id": "art-misc-003",
+      "concept_id": "style-identification",
+      "name": "Style as Chronological",
+      "description": "Believing artistic styles follow a strict timeline",
+      "trigger_answer": "Impressionism came before Realism",
+      "remediation_strategy": "Styles overlap, coexist, and revival. Focus on characteristics, not just dates.",
+      "contrasting_case": null
+    }
+  ],
+
+  "diagnostic_questions": [
+    {
+      "id": "art-diag-001",
+      "concept_id": "visual-analysis",
+      "code_snippet": "[Image: A landscape painting with mountains, a river, and figures]",
+      "prompt": "Which statement demonstrates visual analysis?",
+      "correct_answer": "Diagonal lines lead the eye from the lower left corner to the mountain peak",
+      "distractors": [
+        {"answer": "This painting represents humanity's struggle against nature", "misconception_id": "art-misc-001"},
+        {"answer": "The artist was influenced by Romanticism", "misconception_id": null},
+        {"answer": "This was probably painted in the 19th century", "misconception_id": null}
+      ]
+    },
+    {
+      "id": "art-diag-002",
+      "concept_id": "iconography",
+      "code_snippet": "[Image: Renaissance painting with a figure holding a key]",
+      "prompt": "To understand the key's meaning, what should you do first?",
+      "correct_answer": "Research what keys symbolized in Renaissance religious art",
+      "distractors": [
+        {"answer": "Assume it means access or power, as keys do today", "misconception_id": "art-misc-002"},
+        {"answer": "Look at the artist's biography for personal significance", "misconception_id": null},
+        {"answer": "Ignore it as a minor detail", "misconception_id": null}
+      ]
+    }
+  ],
+
+  "sandboxes": []
+}

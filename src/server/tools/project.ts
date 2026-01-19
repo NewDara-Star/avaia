@@ -215,9 +215,49 @@ async function startSession(args: z.infer<typeof StartSessionInput>) {
 
     const knownTerms = knownTermRows.map(t => t.term);
 
+    // --- Consolidated data: Learning Preferences ---
+    const learnerData = db.prepare(`
+        SELECT name, learning_preferences, current_track_id FROM learner WHERE id = ?
+    `).get(args.learner_id) as {
+        name: string | null;
+        learning_preferences: string | null;
+        current_track_id: string | null;
+    } | undefined;
+
+    const learningPreferences = parseJson<Record<string, unknown>>(learnerData?.learning_preferences || '{}', {});
+
+    // --- Consolidated data: Track Progress ---
+    let trackProgress = null;
+    if (learnerData?.current_track_id) {
+        const track = db.prepare(`
+            SELECT id, name FROM learning_track WHERE id = ?
+        `).get(learnerData.current_track_id) as { id: string; name: string } | undefined;
+
+        const totalProjects = db.prepare(`
+            SELECT COUNT(*) as count FROM project_template WHERE track_id = ?
+        `).get(learnerData.current_track_id) as { count: number };
+
+        const completedProjects = db.prepare(`
+            SELECT COUNT(*) as count FROM project
+            WHERE learner_id = ? AND status = 'completed' AND template_id IN (
+                SELECT id FROM project_template WHERE track_id = ?
+            )
+        `).get(args.learner_id, learnerData.current_track_id) as { count: number };
+
+        trackProgress = {
+            track_id: learnerData.current_track_id,
+            track_name: track?.name || learnerData.current_track_id,
+            projects_completed: completedProjects.count,
+            projects_total: totalProjects.count,
+        };
+    }
+
     return {
         session_id: sessionId,
         start_time: now.toISOString(),
+        learner_name: learnerData?.name || null,
+        learning_preferences: learningPreferences,
+        track_progress: trackProgress,
         previous_session: previousSession ? {
             session_id: previousSession.id,
             ended_at: previousSession.end_time,
@@ -352,10 +392,64 @@ async function getNextStep(args: z.infer<typeof GetNextStepInput>) {
         };
     }
 
+    // Priority 4: Check track for next project
+    const learner = db.prepare(`
+        SELECT current_track_id FROM learner WHERE id = ?
+    `).get(args.learner_id) as { current_track_id: string | null } | undefined;
+
+    if (learner?.current_track_id) {
+        // Get completed projects for this track
+        const completedTemplates = db.prepare(`
+            SELECT template_id FROM project
+            WHERE learner_id = ? AND status = 'completed' AND template_id IS NOT NULL
+        `).all(args.learner_id) as Array<{ template_id: string }>;
+
+        const completedIds = new Set(completedTemplates.map(p => p.template_id));
+
+        // Get next uncompleted project from track
+        const nextTemplate = db.prepare(`
+            SELECT id, sequence_order, name, description
+            FROM project_template
+            WHERE track_id = ? AND id NOT IN (
+                SELECT template_id FROM project WHERE learner_id = ? AND template_id IS NOT NULL
+            )
+            ORDER BY sequence_order ASC
+            LIMIT 1
+        `).get(learner.current_track_id, args.learner_id) as {
+            id: string; sequence_order: number; name: string; description: string | null;
+        } | undefined;
+
+        if (nextTemplate) {
+            // Get total projects in track
+            const totalProjects = db.prepare(`
+                SELECT COUNT(*) as count FROM project_template WHERE track_id = ?
+            `).get(learner.current_track_id) as { count: number };
+
+            return {
+                priority: 'start_project',
+                action: 'start',
+                track_id: learner.current_track_id,
+                next_project_template_id: nextTemplate.id,
+                next_project_name: nextTemplate.name,
+                next_project_description: nextTemplate.description,
+                track_progress: `${completedIds.size}/${totalProjects.count} projects completed`,
+                message: `Ready to start next project: ${nextTemplate.name}. Call select_learning_track() or create project manually.`,
+            };
+        } else {
+            // Track complete!
+            return {
+                priority: 'track_complete',
+                action: 'celebrate',
+                track_id: learner.current_track_id,
+                message: 'Congratulations! You\'ve completed all projects in this track. Consider choosing a new track or generating a custom learning path.',
+            };
+        }
+    }
+
     return {
-        priority: 'start_project',
-        action: 'start',
-        message: 'No active project. Start the next one from the curriculum.',
+        priority: 'no_track',
+        action: 'select_track',
+        message: 'No learning track assigned. Use get_learning_tracks() to see options, then select_learning_track() to choose one.',
     };
 }
 
@@ -435,37 +529,70 @@ async function getLearnerProfile(args: z.infer<typeof GetLearnerProfileInput>) {
 
 const CompleteOnboardingInput = z.object({
     learner_id: z.string().describe('The learner\'s unique identifier'),
+    track_id: z.string().optional().describe('Learning track to start (e.g. "js-web", "cs-theory"). Defaults to js-web.'),
     preferred_teaching_method: z.enum(['example_first', 'concept_first', 'try_first']).optional(),
     best_session_times: z.array(z.string()).optional().describe('Preferred times to study'),
 });
 
 async function completeOnboarding(args: z.infer<typeof CompleteOnboardingInput>) {
     const db = getDatabase();
+    const trackId = args.track_id || 'js-web';
 
+    // Update learner with onboarding complete and track assignment
     db.prepare(`
     UPDATE learner
     SET onboarding_complete = TRUE,
+        current_track_id = ?,
         preferred_teaching_method = COALESCE(?, preferred_teaching_method),
         best_session_times = ?
     WHERE id = ?
   `).run(
+        trackId,
         args.preferred_teaching_method || null,
         toJson(args.best_session_times || []),
         args.learner_id
     );
 
-    // Create first project (Memory Game)
+    // Get first project template from selected track
+    const template = db.prepare(`
+        SELECT id, name, description, estimated_hours
+        FROM project_template
+        WHERE track_id = ?
+        ORDER BY sequence_order ASC
+        LIMIT 1
+    `).get(trackId) as {
+        id: string; name: string; description: string | null; estimated_hours: number | null;
+    } | undefined;
+
+    // Get track info
+    const track = db.prepare(`SELECT name FROM learning_track WHERE id = ?`).get(trackId) as { name: string } | undefined;
+
+    if (!template) {
+        return {
+            onboarding_complete: true,
+            track_id: trackId,
+            track_name: track?.name || trackId,
+            first_project_id: null,
+            first_project_name: null,
+            message: `Onboarding complete! Track ${track?.name || trackId} selected, but no projects found. Track may need seeding.`,
+        };
+    }
+
+    // Create first project from template
     const projectId = generateId('proj');
     db.prepare(`
-    INSERT INTO project (id, learner_id, name, status, started_at)
-    VALUES (?, ?, 'Memory Game', 'in_progress', datetime('now'))
-  `).run(projectId, args.learner_id);
+    INSERT INTO project (id, learner_id, name, template_id, status, started_at)
+    VALUES (?, ?, ?, ?, 'in_progress', datetime('now'))
+  `).run(projectId, args.learner_id, template.name, template.id);
 
     return {
         onboarding_complete: true,
+        track_id: trackId,
+        track_name: track?.name || trackId,
         first_project_id: projectId,
-        first_project_name: 'Memory Game',
-        message: 'Onboarding complete! Starting first project: Memory Game.',
+        first_project_name: template.name,
+        first_project_description: template.description,
+        message: `Onboarding complete! Starting ${track?.name || trackId} track with: ${template.name}.`,
     };
 }
 
@@ -491,6 +618,70 @@ async function startProject(args: z.infer<typeof StartProjectInput>) {
         project_id: projectId,
         project_name: args.project_name,
         message: `Started new project: ${args.project_name}`,
+    };
+}
+
+// =============================================================================
+// Tool: update_learning_preferences
+// =============================================================================
+
+const UpdateLearningPreferencesInput = z.object({
+    learner_id: z.string().describe('The learner\'s unique identifier'),
+    prefers_physical_analogies: z.boolean().optional().describe('Use physical metaphors (paper cards, walking through) before abstract explanations'),
+    prefers_direct_feedback: z.boolean().optional().describe('Skip platitudes, be straight with corrections'),
+    struggles_with_abstract_execution: z.boolean().optional().describe('Needs timelines/walkthroughs for async/execution concepts'),
+    needs_emotional_context: z.boolean().optional().describe('Frame concepts as narratives/stories'),
+    tangent_prone: z.boolean().optional().describe('Needs redirection to verification after conceptual tangents'),
+    prefers_visual_diagrams: z.boolean().optional().describe('Use diagrams over code-only explanations'),
+});
+
+async function updateLearningPreferences(args: z.infer<typeof UpdateLearningPreferencesInput>) {
+    const db = getDatabase();
+
+    // Get existing preferences
+    const existing = db.prepare(`
+        SELECT learning_preferences FROM learner WHERE id = ?
+    `).get(args.learner_id) as { learning_preferences: string | null } | undefined;
+
+    if (!existing) {
+        return { error: 'Learner not found' };
+    }
+
+    const currentPrefs = parseJson<Record<string, unknown>>(existing.learning_preferences || '{}', {});
+
+    // Merge new preferences
+    const newPrefs: Record<string, unknown> = {
+        ...currentPrefs,
+        detected_at: new Date().toISOString(),
+    };
+
+    if (args.prefers_physical_analogies !== undefined) {
+        newPrefs.prefers_physical_analogies = args.prefers_physical_analogies;
+    }
+    if (args.prefers_direct_feedback !== undefined) {
+        newPrefs.prefers_direct_feedback = args.prefers_direct_feedback;
+    }
+    if (args.struggles_with_abstract_execution !== undefined) {
+        newPrefs.struggles_with_abstract_execution = args.struggles_with_abstract_execution;
+    }
+    if (args.needs_emotional_context !== undefined) {
+        newPrefs.needs_emotional_context = args.needs_emotional_context;
+    }
+    if (args.tangent_prone !== undefined) {
+        newPrefs.tangent_prone = args.tangent_prone;
+    }
+    if (args.prefers_visual_diagrams !== undefined) {
+        newPrefs.prefers_visual_diagrams = args.prefers_visual_diagrams;
+    }
+
+    db.prepare(`
+        UPDATE learner SET learning_preferences = ? WHERE id = ?
+    `).run(toJson(newPrefs), args.learner_id);
+
+    return {
+        learner_id: args.learner_id,
+        learning_preferences: newPrefs,
+        message: 'Learning preferences updated. AI will adapt teaching approach accordingly.',
     };
 }
 
@@ -575,6 +766,18 @@ export function registerProjectTools(server: McpServer): void {
         StartProjectInput.shape,
         async (args) => {
             const result = await startProject(StartProjectInput.parse(args));
+            return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
+        }
+    );
+
+    server.tool(
+        'update_learning_preferences',
+        'Updates learner learning style preferences. Call when you detect learning patterns ' +
+        '(e.g., learner responds better to physical analogies, needs direct feedback, struggles with async). ' +
+        'These preferences are returned by start_session() so you can adapt teaching from the start.',
+        UpdateLearningPreferencesInput.shape,
+        async (args) => {
+            const result = await updateLearningPreferences(UpdateLearningPreferencesInput.parse(args));
             return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
         }
     );

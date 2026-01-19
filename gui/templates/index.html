@@ -1176,6 +1176,18 @@
             updateSendButton();
         });
 
+        // Paste support for PyWebView on macOS
+        messageInput.addEventListener('paste', (e) => {
+            e.preventDefault();
+            const text = (e.clipboardData || window.clipboardData).getData('text');
+            const start = messageInput.selectionStart;
+            const end = messageInput.selectionEnd;
+            const currentValue = messageInput.value;
+            messageInput.value = currentValue.substring(0, start) + text + currentValue.substring(end);
+            messageInput.selectionStart = messageInput.selectionEnd = start + text.length;
+            messageInput.dispatchEvent(new Event('input'));
+        });
+
         // Restart button (New Chat)
         restartBtn.addEventListener('click', async () => {
             if (currentSessionMessages.length === 0) {

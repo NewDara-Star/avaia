@@ -52,7 +52,7 @@
  [],
  False,
  False,
- 1768860246,
+ 1768860993,
  [('runw',
    '/Users/Star/avaia/gui/venv/lib/python3.14/site-packages/PyInstaller/bootloader/Darwin-64bit/runw',
    'EXECUTABLE')],

@@ -55,7 +55,11 @@
                         <h3>Anthropic API Key</h3>
                         <p>Get your API key from <a href="https://console.anthropic.com/settings/keys" target="_blank">console.anthropic.com</a></p>
                         <input type="password" id="api-key-input" placeholder="sk-ant-api03-..." class="input-field">
-                        <button class="btn btn-primary" id="btn-byok">Save API Key</button>
+                        <button class="btn btn-primary" id="btn-byok">
+                            <span class="btn-text">Save API Key</span>
+                            <span class="btn-spinner hidden">⟳</span>
+                        </button>
+                        <p class="error-message hidden" id="api-key-error"></p>
                     </div>
                 </div>
 
@@ -82,8 +86,12 @@
                 </div>
 
                 <div class="actions" id="db-actions">
-                    <button class="btn btn-primary" id="btn-db-init">Initialize Database</button>
+                    <button class="btn btn-primary" id="btn-db-init">
+                        <span class="btn-text">Initialize Database</span>
+                        <span class="btn-spinner hidden">⟳</span>
+                    </button>
                 </div>
+                <p class="error-message hidden" id="db-error"></p>
             </section>
 
             <!-- Step 4: Complete -->
@@ -193,15 +201,25 @@
         });
 
         document.getElementById('btn-byok').addEventListener('click', () => {
-            const key = document.getElementById('api-key-input').value;
+            const key = document.getElementById('api-key-input').value.trim();
             const btn = document.getElementById('btn-byok');
+            const btnText = btn.querySelector('.btn-text');
+            const btnSpinner = btn.querySelector('.btn-spinner');
+            const errorMsg = document.getElementById('api-key-error');
+
+            // Clear previous errors
+            errorMsg.textContent = '';
+            errorMsg.classList.add('hidden');
 
             if (!key || !key.startsWith('sk-ant-')) {
-                alert('Please enter a valid Anthropic API key (starts with sk-ant-)');
+                errorMsg.textContent = 'Please enter a valid Anthropic API key (starts with sk-ant-)';
+                errorMsg.classList.remove('hidden');
                 return;
             }
 
-            btn.textContent = 'Saving...';
+            // Show loading state
+            btnText.classList.add('hidden');
+            btnSpinner.classList.remove('hidden');
             btn.disabled = true;
 
             fetch('/api/set-api-key', {
@@ -214,13 +232,19 @@
                     if (data.success) {
                         status.auth.authenticated = true;
                         updateCheckItem('check-auth', true, 'API Key');
-                        nextStep();
+                        setTimeout(() => nextStep(), 300); // Small delay for visual feedback
                     } else {
-                        alert('Failed to save API key: ' + data.error);
+                        errorMsg.textContent = 'Failed to save API key: ' + (data.error || 'Unknown error');
+                        errorMsg.classList.remove('hidden');
                     }
                 })
+                .catch(err => {
+                    errorMsg.textContent = 'Network error: ' + err.message;
+                    errorMsg.classList.remove('hidden');
+                })
                 .finally(() => {
-                    btn.textContent = 'Save API Key';
+                    btnText.classList.remove('hidden');
+                    btnSpinner.classList.add('hidden');
                     btn.disabled = false;
                 });
         });
@@ -232,24 +256,57 @@
             }
         });
 
+        // Add paste support for API key input
+        document.getElementById('api-key-input').addEventListener('paste', (e) => {
+            e.preventDefault();
+            const text = (e.clipboardData || window.clipboardData).getData('text');
+            e.target.value = text.trim();
+        });
+
         document.getElementById('btn-db-init').addEventListener('click', () => {
             const progress = document.getElementById('db-progress');
+            const progressText = progress.querySelector('.progress-text');
             const actions = document.getElementById('db-actions');
+            const errorMsg = document.getElementById('db-error');
+            const btn = document.getElementById('btn-db-init');
+
+            // Clear errors
+            errorMsg.textContent = '';
+            errorMsg.classList.add('hidden');
+
+            // Show progress
             progress.classList.remove('hidden');
             actions.classList.add('hidden');
+            progressText.textContent = 'Initializing database...';
+
+            // Set timeout (45 seconds for seeding)
+            const timeout = setTimeout(() => {
+                errorMsg.textContent = 'Initialization is taking longer than expected. Please wait...';
+                errorMsg.classList.remove('hidden');
+            }, 30000);
 
             fetch('/setup/install/database', { method: 'POST' })
                 .then(r => r.json())
                 .then(data => {
+                    clearTimeout(timeout);
                     if (data.success) {
+                        progressText.textContent = '✓ Database initialized successfully!';
                         status.database.installed = true;
                         updateCheckItem('check-db', true, null);
-                        nextStep();
+                        setTimeout(() => nextStep(), 800);
                     } else {
-                        alert('Initialization failed: ' + data.error);
                         progress.classList.add('hidden');
                         actions.classList.remove('hidden');
+                        errorMsg.textContent = 'Initialization failed: ' + (data.error || 'Unknown error');
+                        errorMsg.classList.remove('hidden');
                     }
+                })
+                .catch(err => {
+                    clearTimeout(timeout);
+                    progress.classList.add('hidden');
+                    actions.classList.remove('hidden');
+                    errorMsg.textContent = 'Network error: ' + err.message;
+                    errorMsg.classList.remove('hidden');
                 });
         });
 

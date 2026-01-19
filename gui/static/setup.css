@@ -427,3 +427,28 @@ body {
 .setup-footer a {
     color: var(--accent);
 }
+/* Error message styling */
+.error-message {
+    color: var(--error);
+    font-size: 14px;
+    margin-top: 8px;
+    padding: 8px 12px;
+    background: rgba(248, 113, 113, 0.1);
+    border-radius: var(--radius-sm);
+    border: 1px solid rgba(248, 113, 113, 0.2);
+}
+
+/* Button spinner */
+.btn-spinner {
+    display: inline-block;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+.hidden {
+    display: none !important;
+}

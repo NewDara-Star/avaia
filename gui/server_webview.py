@@ -1357,6 +1357,9 @@ def api_set_api_key():
         # Set in memory
         set_api_key_direct(api_key)
 
+        # Invalidate cache so next check reflects the new API key
+        invalidate_preflight_cache()
+
         return jsonify({"success": True})
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500

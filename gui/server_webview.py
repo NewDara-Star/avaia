@@ -484,8 +484,11 @@ def stream_anthropic_response(message: str, model: str, learner_id: str, emit_fn
 def index():
     """Main chat interface - requires full setup including auth."""
     status = preflight_check()
+    print(f"[DEBUG] Preflight check - all_ready: {status.all_ready}, auth: {status.auth.authenticated}, db: {status.database.installed}")
     if not status.all_ready:
+        print("[DEBUG] Redirecting to /setup")
         return redirect('/setup')
+    print("[DEBUG] Rendering index.html")
     return render_template('index.html')
 
 

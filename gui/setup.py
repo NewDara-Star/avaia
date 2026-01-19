@@ -5,7 +5,7 @@ Run: python setup.py py2app
 
 from setuptools import setup
 
-APP = ['server.py']
+APP = ['server_webview.py']
 DATA_FILES = [
     ('templates', ['templates/index.html', 'templates/setup.html', 'templates/dashboard.html']),
     ('static', ['static/style.css', 'static/setup.css', 'static/shared.js', 'static/socket.io.min.js']),

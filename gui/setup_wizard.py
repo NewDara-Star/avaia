@@ -542,6 +542,29 @@ def initialize_database(callback=None) -> tuple[bool, str]:
         conn.commit()
         conn.close()
 
+        # Seed learning tracks automatically
+        if callback:
+            callback("Seeding learning tracks...")
+
+        try:
+            # Call npm run db:seed-all to populate curriculum
+            import subprocess
+            project_root = Path(__file__).parent.parent
+            result = subprocess.run(
+                ["npm", "run", "db:seed-all"],
+                cwd=str(project_root),
+                capture_output=True,
+                text=True,
+                timeout=60
+            )
+
+            if result.returncode != 0:
+                print(f"Warning: Track seeding failed: {result.stderr}", file=sys.stderr)
+                # Don't fail the whole setup - database is still functional
+        except Exception as seed_err:
+            print(f"Warning: Could not seed tracks: {seed_err}", file=sys.stderr)
+            # Don't fail the whole setup
+
         return True, f"Database initialized at {db_path}"
 
     except Exception as e:

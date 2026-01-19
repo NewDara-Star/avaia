@@ -486,14 +486,21 @@ def initialize_database(callback=None) -> tuple[bool, str]:
         # Find migrations directory
         # Check multiple possible locations
         migration_paths = [
+            # Source directory (development)
             Path(__file__).parent.parent / "src" / "server" / "db" / "migrations",
+            # py2app bundled location (Resources/migrations)
+            Path(__file__).parent / "migrations",
+            # Alternative: relative to executable
+            Path(sys.executable).parent.parent / "Resources" / "migrations",
+            # User's home directory (if copied there)
             Path.home() / ".avaia" / "migrations",
+            # System-wide installation
             Path("/usr/local/share/avaia/migrations"),
         ]
-        
+
         migrations_dir = None
         for path in migration_paths:
-            if path.exists():
+            if path.exists() and any(path.glob("*.sql")):
                 migrations_dir = path
                 break
         
@@ -542,28 +549,11 @@ def initialize_database(callback=None) -> tuple[bool, str]:
         conn.commit()
         conn.close()
 
-        # Seed learning tracks automatically
+        # TODO: Seed learning tracks automatically
+        # For now, tracks need to be seeded manually with: npm run db:seed-all
+        # This is because the built app doesn't have access to npm scripts
         if callback:
-            callback("Seeding learning tracks...")
-
-        try:
-            # Call npm run db:seed-all to populate curriculum
-            import subprocess
-            project_root = Path(__file__).parent.parent
-            result = subprocess.run(
-                ["npm", "run", "db:seed-all"],
-                cwd=str(project_root),
-                capture_output=True,
-                text=True,
-                timeout=60
-            )
-
-            if result.returncode != 0:
-                print(f"Warning: Track seeding failed: {result.stderr}", file=sys.stderr)
-                # Don't fail the whole setup - database is still functional
-        except Exception as seed_err:
-            print(f"Warning: Could not seed tracks: {seed_err}", file=sys.stderr)
-            # Don't fail the whole setup
+            callback("Database schema created successfully")
 
         return True, f"Database initialized at {db_path}"
 

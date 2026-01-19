@@ -7,8 +7,17 @@ from setuptools import setup
 
 APP = ['server.py']
 DATA_FILES = [
-    ('templates', ['templates/index.html']),
-    ('static', ['static/style.css']),
+    ('templates', ['templates/index.html', 'templates/setup.html', 'templates/dashboard.html']),
+    ('static', ['static/style.css', 'static/setup.css', 'static/shared.js', 'static/socket.io.min.js']),
+    ('migrations', [
+        '../src/server/db/migrations/001_initial.sql',
+        '../src/server/db/migrations/002_session_notes.sql',
+        '../src/server/db/migrations/003_learner_terms.sql',
+        '../src/server/db/migrations/004_chat_history.sql',
+        '../src/server/db/migrations/005_learning_profiles.sql',
+        '../src/server/db/migrations/006_learning_tracks.sql',
+        '../src/server/db/migrations/008_seed_curriculum.sql',
+    ]),
 ]
 
 OPTIONS = {

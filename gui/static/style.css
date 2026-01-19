@@ -1277,6 +1277,76 @@ textarea::placeholder {
     color: var(--text-primary);
 }
 
+/* Settings */
+.settings-content {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.settings-item {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.settings-label {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-primary);
+}
+
+.settings-hint {
+    font-size: 12px;
+    color: var(--text-muted);
+    font-weight: 400;
+}
+
+.settings-input-group {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.settings-input {
+    flex: 1;
+    padding: 10px 14px;
+    background: var(--bg-hover);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--text-primary);
+    font-size: 14px;
+    font-family: 'JetBrains Mono', monospace;
+}
+
+.settings-input:focus {
+    outline: none;
+    border-color: var(--accent);
+}
+
+.settings-input[readonly] {
+    opacity: 0.7;
+    cursor: default;
+}
+
+.api-key-edit {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 16px;
+    background: var(--bg-hover);
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border);
+}
+
+.button-group {
+    display: flex;
+    gap: 8px;
+}
+
 /* Progress Bar */
 .progress-bar {
     height: 8px;

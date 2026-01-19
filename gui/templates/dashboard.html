@@ -207,6 +207,48 @@
                         </div>
                     </div>
 
+                    <!-- Settings -->
+                    <div class="dashboard-card">
+                        <h3>Settings</h3>
+                        <div class="settings-content">
+                            <div class="settings-item">
+                                <label class="settings-label">
+                                    API Key
+                                    <span class="settings-hint">Your Anthropic API key for Claude</span>
+                                </label>
+                                <div class="settings-input-group">
+                                    <input
+                                        type="password"
+                                        id="apiKeyDisplay"
+                                        class="settings-input"
+                                        value="sk-ant-********************"
+                                        readonly
+                                    >
+                                    <button class="btn btn-secondary" id="editApiKeyBtn" onclick="toggleApiKeyEdit()">
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                                        </svg>
+                                        Edit
+                                    </button>
+                                </div>
+                                <div id="apiKeyEditForm" class="api-key-edit" style="display: none;">
+                                    <input
+                                        type="password"
+                                        id="newApiKeyInput"
+                                        class="settings-input"
+                                        placeholder="sk-ant-api03-..."
+                                    >
+                                    <div class="button-group">
+                                        <button class="btn btn-primary" onclick="saveApiKey()">Save</button>
+                                        <button class="btn btn-secondary" onclick="toggleApiKeyEdit()">Cancel</button>
+                                    </div>
+                                    <p class="settings-hint" id="apiKeyMessage"></p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- Curriculum Updates -->
                     <div class="dashboard-card" id="curriculumCard">
                         <h3>Curriculum</h3>
@@ -460,6 +502,65 @@
                 console.error('Failed to apply updates:', error);
                 alert('Failed to apply updates: ' + error.message);
                 await checkCurriculumUpdates();
+            }
+        }
+
+        // API Key Management
+        function toggleApiKeyEdit() {
+            const editForm = document.getElementById('apiKeyEditForm');
+            const displayGroup = document.querySelector('.settings-input-group');
+            const message = document.getElementById('apiKeyMessage');
+
+            if (editForm.style.display === 'none') {
+                editForm.style.display = 'block';
+                displayGroup.style.display = 'none';
+                document.getElementById('newApiKeyInput').value = '';
+                message.textContent = '';
+            } else {
+                editForm.style.display = 'none';
+                displayGroup.style.display = 'flex';
+            }
+        }
+
+        async function saveApiKey() {
+            const newKey = document.getElementById('newApiKeyInput').value.trim();
+            const message = document.getElementById('apiKeyMessage');
+
+            if (!newKey) {
+                message.textContent = 'Please enter an API key';
+                message.style.color = 'var(--error)';
+                return;
+            }
+
+            if (!newKey.startsWith('sk-ant-')) {
+                message.textContent = 'Invalid API key format. Must start with sk-ant-';
+                message.style.color = 'var(--error)';
+                return;
+            }
+
+            try {
+                const result = await apiPost('/setup/auth/byok', { api_key: newKey });
+
+                if (result.success) {
+                    message.textContent = 'API key updated successfully!';
+                    message.style.color = 'var(--success)';
+
+                    // Update display
+                    const masked = 'sk-ant-' + '*'.repeat(newKey.length - 7);
+                    document.getElementById('apiKeyDisplay').value = masked;
+
+                    // Close edit form after 1 second
+                    setTimeout(() => {
+                        toggleApiKeyEdit();
+                    }, 1000);
+                } else {
+                    message.textContent = 'Failed to update API key: ' + (result.error || 'Unknown error');
+                    message.style.color = 'var(--error)';
+                }
+            } catch (error) {
+                console.error('Failed to save API key:', error);
+                message.textContent = 'Failed to update API key: ' + error.message;
+                message.style.color = 'var(--error)';
             }
         }
 

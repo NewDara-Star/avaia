@@ -1,6 +1,6 @@
 {
   "name": "@newdara/avaia",
-  "version": "1.4.0",
+  "version": "1.5.0",
   "description": "Proactive AI Programming Teacher - MCP server for Claude Code",
   "type": "module",
   "main": "dist/server/index.js",

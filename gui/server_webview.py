@@ -1706,9 +1706,8 @@ def main():
     signal.signal(signal.SIGINT, signal_handler)
     signal.signal(signal.SIGTERM, signal_handler)
 
-    # Run database migrations before starting
-    print("Checking database migrations...")
-    run_migrations()
+    # Database migrations are handled by setup wizard
+    # Don't run migrations automatically to avoid bypassing setup flow
 
     # Find a free port
     port = find_free_port()

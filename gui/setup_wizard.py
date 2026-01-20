@@ -275,17 +275,18 @@ def check_avaia_mcp() -> DependencyStatus:
 def check_database() -> DependencyStatus:
     """Check if Avaia database exists and has correct schema."""
     db_path = Path.home() / ".avaia" / "avaia.db"
-    
+
     if not db_path.exists():
         return DependencyStatus(
             name="database",
             installed=False,
             path=str(db_path),
-            error="Database not found. Will be created on first run."
+            error="Database not found. Initialize it in the setup wizard."
         )
-    
+
     try:
-        conn = sqlite3.connect(str(db_path))
+        # Use URI with mode=ro to prevent auto-creation if file exists but is invalid
+        conn = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True)
         cursor = conn.cursor()
         
         # Check for essential tables
@@ -509,13 +510,48 @@ def initialize_database(callback=None) -> tuple[bool, str]:
         if migrations_dir:
             # Run all SQL migrations in order
             migration_files = sorted(migrations_dir.glob("*.sql"))
-            
+
+            # Create migrations tracking table
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS _migrations (
+                    name TEXT PRIMARY KEY,
+                    applied_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+            conn.commit()
+
+            # Get already applied migrations
+            cursor = conn.execute("SELECT name FROM _migrations")
+            applied = set(row[0] for row in cursor.fetchall())
+
             for mig_file in migration_files:
+                if mig_file.name in applied:
+                    if callback:
+                        callback(f"Skipping already applied: {mig_file.name}")
+                    continue
+
                 if callback:
                     callback(f"Running migration: {mig_file.name}")
-                
-                sql = mig_file.read_text()
-                conn.executescript(sql)
+
+                try:
+                    sql = mig_file.read_text()
+                    # Execute entire migration as script - handles multi-line statements correctly
+                    conn.executescript(sql)
+                    conn.commit()
+
+                    # Mark migration as applied
+                    conn.execute("INSERT INTO _migrations (name) VALUES (?)", (mig_file.name,))
+                    conn.commit()
+
+                except Exception as mig_err:
+                    err_msg = str(mig_err).lower()
+                    # Ignore idempotent errors (duplicate column, table already exists)
+                    if 'duplicate' in err_msg or 'already exists' in err_msg:
+                        conn.execute("INSERT OR IGNORE INTO _migrations (name) VALUES (?)", (mig_file.name,))
+                        conn.commit()
+                    else:
+                        # Real error - re-raise to fail setup
+                        raise
         else:
             # Fallback: create minimal schema
             if callback:

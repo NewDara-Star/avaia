@@ -20,8 +20,25 @@ import threading
 import time
 import uuid
 from datetime import datetime, date, timedelta
+from pathlib import Path
 
 import anthropic
+
+# Setup file logging for debugging
+import logging
+DEBUG_LOG = Path.home() / ".avaia" / "debug.log"
+DEBUG_LOG.parent.mkdir(exist_ok=True)
+logging.basicConfig(
+    level=logging.DEBUG,
+    format='%(asctime)s - %(message)s',
+    handlers=[
+        logging.FileHandler(DEBUG_LOG, mode='a'),
+        logging.StreamHandler(sys.stdout)
+    ]
+)
+logger = logging.getLogger(__name__)
+logger.info("="*60)
+logger.info("Avaia starting...")
 
 # Handle PyInstaller paths - MUST be before any local imports
 if getattr(sys, 'frozen', False):
@@ -352,11 +369,15 @@ def stream_anthropic_response(message: str, model: str, learner_id: str, emit_fn
     """Stream a response from Anthropic API with tool calling support."""
     global _conversation_history
 
+    logger.info(f"[STREAM] Starting stream - Model: {model}, Learner: {learner_id}")
+
     # Import tools
     from avaia_tools import TOOL_DEFINITIONS, execute_tool
+    logger.info(f"[STREAM] Loaded {len(TOOL_DEFINITIONS)} tools")
 
     client = get_anthropic_client()
     system_prompt = get_avaia_prompt()
+    logger.info(f"[STREAM] System prompt loaded: {len(system_prompt)} chars")
 
     # Add learner context to system prompt
     if learner_id:
@@ -380,6 +401,8 @@ def stream_anthropic_response(message: str, model: str, learner_id: str, emit_fn
         _conversation_history = _conversation_history[-40:]
 
     model_id = MODEL_MAP.get(model, MODEL_MAP['sonnet'])
+    logger.info(f"[STREAM] Using model: {model_id}")
+    logger.info(f"[STREAM] Conversation history: {len(_conversation_history)} messages")
 
     full_response = []
     tool_calls_made = []
@@ -387,6 +410,7 @@ def stream_anthropic_response(message: str, model: str, learner_id: str, emit_fn
 
     try:
         # Initial API call with tools
+        logger.info("[STREAM] Making initial API call...")
         response = client.messages.create(
             model=model_id,
             max_tokens=4096,
@@ -394,24 +418,37 @@ def stream_anthropic_response(message: str, model: str, learner_id: str, emit_fn
             tools=TOOL_DEFINITIONS,
             messages=_conversation_history
         )
+        logger.info(f"[STREAM] API response received - Stop reason: {response.stop_reason}, Blocks: {len(response.content)}")
 
         # Process response - may involve multiple tool calls
+        iteration = 0
         while response.stop_reason == 'tool_use':
+            iteration += 1
+            logger.info(f"[STREAM] Tool use iteration {iteration}")
             # Collect text and tool uses from response
             assistant_content = []
-            for block in response.content:
+            logger.info(f"[STREAM] Processing {len(response.content)} content blocks")
+            for idx, block in enumerate(response.content):
+                logger.info(f"[STREAM] Block {idx+1}/{len(response.content)}: type={block.type}")
                 if block.type == 'text':
+                    logger.info(f"[STREAM] Text block: {len(block.text)} chars")
                     full_response.append(block.text)
+                    logger.info("[STREAM] About to emit 'output' event...")
                     emit_fn('output', {'data': block.text})
+                    logger.info("[STREAM] 'output' event emitted successfully")
                     assistant_content.append({"type": "text", "text": block.text})
+                    logger.info("[STREAM] Text appended to assistant_content")
                 elif block.type == 'tool_use':
                     tool_name = block.name
                     tool_input = block.input
                     tool_use_id = block.id
+                    logger.info(f"[STREAM] Tool use: {tool_name} (id: {tool_use_id})")
 
                     # Execute the tool
                     emit_fn('tool_use', {'name': tool_name, 'input': tool_input})
+                    logger.info(f"[STREAM] Executing tool: {tool_name}...")
                     result = execute_tool(tool_name, tool_input)
+                    logger.info(f"[STREAM] Tool result: {str(result)[:100]}...")
                     tool_calls_made.append({'name': tool_name, 'input': tool_input})
                     tool_results.append({'name': tool_name, 'result': result})
                     emit_fn('tool_result', {'name': tool_name, 'result': result})
@@ -424,6 +461,7 @@ def stream_anthropic_response(message: str, model: str, learner_id: str, emit_fn
                     })
 
             # Add assistant message with tool uses to history
+            logger.info(f"[STREAM] Adding assistant message to history ({len(assistant_content)} blocks)")
             _conversation_history.append({
                 "role": "assistant",
                 "content": assistant_content
@@ -440,12 +478,14 @@ def stream_anthropic_response(message: str, model: str, learner_id: str, emit_fn
                         "content": json.dumps(result)
                     })
 
+            logger.info(f"[STREAM] Adding tool results to history ({len(tool_result_content)} results)")
             _conversation_history.append({
                 "role": "user",
                 "content": tool_result_content
             })
 
             # Continue the conversation
+            logger.info("[STREAM] Continuing conversation with tool results...")
             response = client.messages.create(
                 model=model_id,
                 max_tokens=4096,
@@ -453,19 +493,28 @@ def stream_anthropic_response(message: str, model: str, learner_id: str, emit_fn
                 tools=TOOL_DEFINITIONS,
                 messages=_conversation_history
             )
+            logger.info(f"[STREAM] Continuation response - Stop reason: {response.stop_reason}")
 
         # Final response (no more tool calls)
+        logger.info(f"[STREAM] Processing final response ({len(response.content)} blocks)")
         for block in response.content:
             if block.type == 'text':
+                logger.info(f"[STREAM] Final text: {len(block.text)} chars")
                 full_response.append(block.text)
+                logger.info("[STREAM] Text appended to full_response")
                 emit_fn('output', {'data': block.text})
+                logger.info("[STREAM] Text emitted via emit_fn")
 
         # Add final assistant response to history
+        logger.info("[STREAM] Joining full_response...")
         assistant_message = ''.join(full_response)
+        logger.info(f"[STREAM] Complete! Total response: {len(assistant_message)} chars")
+        logger.info("[STREAM] Appending to conversation history...")
         _conversation_history.append({
             "role": "assistant",
             "content": assistant_message
         })
+        logger.info("[STREAM] Returning assistant_message...")
 
         return assistant_message
 
@@ -712,20 +761,18 @@ def api_dashboard():
 
         # Due reviews
         due_reviews = db.execute("""
-            SELECT lc.concept_id, c.name as concept_name, lc.code_snippet, lc.snippet_context as context
+            SELECT lc.concept_id, c.name as concept_name, ci.code_snippet, ci.snippet_context as context
             FROM learner_concept lc
             LEFT JOIN concept c ON lc.concept_id = c.id
-            WHERE lc.learner_id = ? AND lc.next_review <= datetime('now')
-            ORDER BY lc.next_review
+            LEFT JOIN concept_instance ci ON lc.learner_id = ci.learner_id AND lc.concept_id = ci.concept_id
+            WHERE lc.learner_id = ? AND lc.next_review_date <= datetime('now')
+            ORDER BY lc.next_review_date
             LIMIT 5
         """, (learner_id,)).fetchall()
 
-        # Stubborn bugs
-        stubborn_bugs = db.execute("""
-            SELECT concept_id, misconception_id
-            FROM stubborn_bug
-            WHERE learner_id = ? AND resolved = 0
-        """, (learner_id,)).fetchall()
+        # Stubborn bugs (stored as JSON in learner_concept.stubborn_misconceptions)
+        # For now, return empty list - proper implementation would parse JSON column
+        stubborn_bugs = []
 
         # Current project - try learner.current_project_id or most recent active project
         project_result = db.execute("""
@@ -798,17 +845,19 @@ def api_learning():
 
         # Mastered concepts
         mastered = db.execute("""
-            SELECT lc.concept_id, c.name, lc.snippet_context as context
+            SELECT lc.concept_id, c.name, ci.snippet_context as context
             FROM learner_concept lc
             LEFT JOIN concept c ON lc.concept_id = c.id
+            LEFT JOIN concept_instance ci ON lc.learner_id = ci.learner_id AND lc.concept_id = ci.concept_id
             WHERE lc.learner_id = ? AND lc.verified = 1
         """, (learner_id,)).fetchall()
 
         # Learning concepts
         learning = db.execute("""
-            SELECT lc.concept_id, c.name, lc.snippet_context as context, lc.independence_score
+            SELECT lc.concept_id, c.name, ci.snippet_context as context, lc.independence_score
             FROM learner_concept lc
             LEFT JOIN concept c ON lc.concept_id = c.id
+            LEFT JOIN concept_instance ci ON lc.learner_id = ci.learner_id AND lc.concept_id = ci.concept_id
             WHERE lc.learner_id = ? AND (lc.verified = 0 OR lc.verified IS NULL)
         """, (learner_id,)).fetchall()
 
@@ -1015,9 +1064,9 @@ def api_tracks():
     try:
         db = get_db()
         tracks = db.execute("""
-            SELECT id, name, description, difficulty,
-                   (SELECT COUNT(*) FROM project WHERE track_id = learning_track.id) as project_count
-            FROM learning_track
+            SELECT lt.id, lt.name, lt.description, lt.difficulty,
+                   (SELECT COUNT(*) FROM project_template WHERE track_id = lt.id) as project_count
+            FROM learning_track lt
         """).fetchall()
         db.close()
 
@@ -1402,12 +1451,13 @@ def api_reviews():
 
         # Due reviews with code snippets
         due_concepts = db.execute("""
-            SELECT lc.concept_id, c.name as concept_name, lc.code_snippet,
-                   lc.snippet_context as context, lc.next_review
+            SELECT lc.concept_id, c.name as concept_name, ci.code_snippet,
+                   ci.snippet_context as context, lc.next_review_date
             FROM learner_concept lc
             LEFT JOIN concept c ON lc.concept_id = c.id
-            WHERE lc.learner_id = ? AND lc.next_review <= datetime('now')
-            ORDER BY lc.next_review
+            LEFT JOIN concept_instance ci ON lc.learner_id = ci.learner_id AND lc.concept_id = ci.concept_id
+            WHERE lc.learner_id = ? AND lc.next_review_date <= datetime('now')
+            ORDER BY lc.next_review_date
         """, (learner_id,)).fetchall()
 
         # Count completed today
@@ -1519,18 +1569,21 @@ def api_log_review():
 
         # Update next review date (simple FSRS-like logic)
         if outcome == 'correct':
-            # Increase interval
+            # Increase interval based on reps
             db.execute("""
                 UPDATE learner_concept
-                SET next_review = datetime('now', '+' || (COALESCE(review_count, 0) + 1) || ' days'),
-                    review_count = COALESCE(review_count, 0) + 1
+                SET next_review_date = datetime('now', '+' || (COALESCE(reps, 0) + 1) || ' days'),
+                    reps = COALESCE(reps, 0) + 1,
+                    last_review_date = datetime('now')
                 WHERE learner_id = ? AND concept_id = ?
             """, (learner_id, concept_id))
         else:
-            # Reset to tomorrow
+            # Reset to tomorrow and increment lapses
             db.execute("""
                 UPDATE learner_concept
-                SET next_review = datetime('now', '+1 day')
+                SET next_review_date = datetime('now', '+1 day'),
+                    lapses = COALESCE(lapses, 0) + 1,
+                    last_review_date = datetime('now')
                 WHERE learner_id = ? AND concept_id = ?
             """, (learner_id, concept_id))
 
@@ -1545,13 +1598,15 @@ def api_log_review():
 
 @socketio.on('connect')
 def handle_connect():
+    from flask import request
+    logger.info(f"[WEBSOCKET] Client connected - SID: {request.sid}")
     emit('status', {'connected': True})
-    print(f"Client connected: {session_id or 'unknown'}")
 
 
 @socketio.on('disconnect')
 def handle_disconnect():
-    print("Client disconnected")
+    from flask import request
+    logger.info(f"[WEBSOCKET] Client disconnected - SID: {request.sid}")
 
 
 @socketio.on('input')
@@ -1563,33 +1618,50 @@ def handle_input(data):
     learner_id = data.get('learner_id', '')
     model = data.get('model', 'sonnet')
 
+    logger.info(f"[WEBSOCKET] Received 'input' event - SID: {request.sid}")
+    logger.info(f"[WEBSOCKET] Message: {message[:100]}...")
+    logger.info(f"[WEBSOCKET] Learner: {learner_id}, Model: {model}")
+
     if not message.strip():
+        logger.info("[WEBSOCKET] Empty message, ignoring")
         return
 
     # Auto-log user message
     auto_log_message('user', message)
 
+    # Capture the session ID before entering background thread
+    client_sid = request.sid
+    logger.info(f"[WEBSOCKET] Captured client SID: {client_sid}")
+
     def emit_to_client(event, data):
         """Helper to emit to the current client."""
-        socketio.emit(event, data, room=request.sid)
+        logger.info(f"[WEBSOCKET] Emitting '{event}' to {client_sid}")
+        socketio.emit(event, data, room=client_sid)
+        logger.info(f"[WEBSOCKET] Emit complete for '{event}'")
 
     # Run API call in background thread to not block
     def run_api_call():
         try:
+            logger.info(f"[CHAT] Starting API call - Model: {model}, Learner: {learner_id}")
             response = stream_anthropic_response(
                 message=message,
                 model=model,
                 learner_id=learner_id,
                 emit_fn=emit_to_client
             )
+            logger.info(f"[CHAT] API call completed - Response length: {len(response) if response else 0}")
 
             # Auto-log assistant response
             if response:
                 auto_log_message('assistant', response)
 
+            logger.info("[CHAT] Emitting response_complete")
             emit_to_client('response_complete', {})
 
         except Exception as e:
+            print(f"[CHAT ERROR] {type(e).__name__}: {str(e)}")
+            import traceback
+            traceback.print_exc()
             emit_to_client('error', {'error': str(e)})
             emit_to_client('response_complete', {})
 

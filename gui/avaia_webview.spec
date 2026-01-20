@@ -59,6 +59,8 @@ a = Analysis(
         'AppKit',
         'Foundation',
         'WebKit',
+        # MCP Tools module
+        'avaia_tools',
     ],
     hookspath=[],
     hooksconfig={},

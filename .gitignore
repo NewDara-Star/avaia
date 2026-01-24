@@ -10,3 +10,4 @@ data/
 # Research and internal docs (not needed for package)
 research/
 docs/
+.aider*

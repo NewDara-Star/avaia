@@ -1,0 +1,1262 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Avaia</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap"
+        rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.6/dist/purify.min.js"></script>
+    <!-- Whisper WASM via Transformers.js for offline speech recognition -->
+    <script type="module">
+        import { pipeline } from 'https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.2';
+        window.TransformersJS = { pipeline };
+    </script>
+</head>
+
+<body>
+    <div class="app">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <button class="new-chat-btn" id="restartBtn">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M12 5v14M5 12h14" />
+                    </svg>
+                    New chat
+                </button>
+            </div>
+
+            <!-- Navigation -->
+            <nav class="sidebar-nav">
+                <a href="/" class="nav-item active" data-page="chat">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                    </svg>
+                    <span>Chat</span>
+                </a>
+                <a href="/dashboard" class="nav-item" data-page="dashboard">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="3" y="3" width="7" height="7"/>
+                        <rect x="14" y="3" width="7" height="7"/>
+                        <rect x="14" y="14" width="7" height="7"/>
+                        <rect x="3" y="14" width="7" height="7"/>
+                    </svg>
+                    <span>Dashboard</span>
+                </a>
+                <a href="/learning" class="nav-item" data-page="learning">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/>
+                        <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>
+                    </svg>
+                    <span>My Learning</span>
+                </a>
+                <a href="/projects" class="nav-item" data-page="projects">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+                    </svg>
+                    <span>Projects</span>
+                </a>
+                <a href="/reviews" class="nav-item" data-page="reviews">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="23 4 23 10 17 10"/>
+                        <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+                    </svg>
+                    <span>Reviews</span>
+                    <span class="nav-badge" id="reviewsBadge" style="display: none;">0</span>
+                </a>
+            </nav>
+
+            <div class="sidebar-divider"></div>
+
+            <div class="sidebar-content" id="chatHistoryContainer">
+                <!-- Chat history will be rendered here by JavaScript -->
+            </div>
+
+            <!-- Learner Settings -->
+            <div class="sidebar-settings">
+                <div class="settings-section">
+                    <label class="settings-label" for="learnerIdInput">Learner ID</label>
+                    <div class="settings-input-wrapper">
+                        <input
+                            type="text"
+                            id="learnerIdInput"
+                            class="settings-input"
+                            placeholder="learner_xxxxx"
+                            spellcheck="false"
+                        >
+                        <span class="settings-saved" id="savedIndicator">Saved</span>
+                    </div>
+                    <p class="settings-hint">Your ID persists across sessions</p>
+                </div>
+
+                <div class="settings-section" style="margin-top: 16px;">
+                    <label class="settings-label" for="modelSelect">Model</label>
+                    <select id="modelSelect" class="settings-select">
+                        <option value="sonnet">Claude Sonnet</option>
+                        <option value="opus">Claude Opus</option>
+                        <option value="haiku">Claude Haiku</option>
+                    </select>
+                    <p class="settings-hint">Opus is smartest, Haiku is fastest</p>
+                </div>
+            </div>
+
+            <div class="sidebar-footer">
+                <div class="status-indicator" id="status">
+                    <span class="status-dot"></span>
+                    <span class="status-text">Connecting...</span>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <header class="main-header">
+                <button class="menu-toggle" id="menuToggle">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M3 12h18M3 6h18M3 18h18" />
+                    </svg>
+                </button>
+                <div class="model-selector">
+                    <span class="model-name">Avaia</span>
+                    <span class="model-badge">Tutor</span>
+                </div>
+            </header>
+
+            <div class="chat-area" id="chatContainer">
+                <!-- Welcome Screen -->
+                <div class="welcome-screen" id="welcomeScreen">
+                    <div class="welcome-logo">
+                        <div class="logo-circle">
+                            <span>A</span>
+                        </div>
+                    </div>
+                    <h1>How can I help you learn today?</h1>
+                    <div class="suggestion-grid">
+                        <button class="suggestion-card" data-message="I want to start learning programming">
+                            <div class="suggestion-icon">🚀</div>
+                            <div class="suggestion-text">
+                                <strong>Start learning</strong>
+                                <span>Begin your programming journey</span>
+                            </div>
+                        </button>
+                        <button class="suggestion-card" data-message="Continue where I left off">
+                            <div class="suggestion-icon">📚</div>
+                            <div class="suggestion-text">
+                                <strong>Continue learning</strong>
+                                <span>Pick up where you left off</span>
+                            </div>
+                        </button>
+                        <button class="suggestion-card" data-message="I need help with something I'm stuck on">
+                            <div class="suggestion-icon">💡</div>
+                            <div class="suggestion-text">
+                                <strong>Get help</strong>
+                                <span>Ask about something specific</span>
+                            </div>
+                        </button>
+                        <button class="suggestion-card" data-message="Review what I've learned">
+                            <div class="suggestion-icon">🔄</div>
+                            <div class="suggestion-text">
+                                <strong>Review concepts</strong>
+                                <span>Practice and reinforce learning</span>
+                            </div>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Messages will be inserted here -->
+            </div>
+
+            <div class="input-area">
+                <div class="input-container">
+                    <div class="input-wrapper">
+                        <textarea id="messageInput" placeholder="Message Avaia..." rows="1" autofocus></textarea>
+                        <button class="voice-btn" id="voiceBtn" title="Voice input">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2">
+                                <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
+                                <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+                                <line x1="12" y1="19" x2="12" y2="23" />
+                                <line x1="8" y1="23" x2="16" y2="23" />
+                            </svg>
+                        </button>
+                        <button class="send-btn" id="sendBtn" disabled>
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
+                            </svg>
+                        </button>
+                    </div>
+                    <p class="input-hint">Avaia can make mistakes. Verify important information.</p>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        const socket = io();
+        const chatContainer = document.getElementById('chatContainer');
+        const welcomeScreen = document.getElementById('welcomeScreen');
+        const messageInput = document.getElementById('messageInput');
+        const sendBtn = document.getElementById('sendBtn');
+        const restartBtn = document.getElementById('restartBtn');
+        const statusEl = document.getElementById('status');
+        const menuToggle = document.getElementById('menuToggle');
+        const sidebar = document.querySelector('.sidebar');
+        const chatHistoryContainer = document.getElementById('chatHistoryContainer');
+
+        let currentResponse = null;
+        let outputBuffer = '';
+        let renderTimeout = null;
+        let isWaiting = false;
+        let currentSessionId = null;
+        let currentSessionMessages = [];
+
+        // ============================================
+        // Session History Management
+        // ============================================
+
+        function generateSessionId() {
+            return 'session_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+        }
+
+        function getSessionHistory() {
+            try {
+                return JSON.parse(localStorage.getItem('avaia_session_history') || '[]');
+            } catch {
+                return [];
+            }
+        }
+
+        function saveSessionHistory(history) {
+            localStorage.setItem('avaia_session_history', JSON.stringify(history));
+        }
+
+        function getCurrentSession() {
+            return {
+                id: currentSessionId,
+                messages: currentSessionMessages,
+                startedAt: currentSessionMessages[0]?.timestamp || Date.now(),
+                title: generateSessionTitle()
+            };
+        }
+
+        function generateSessionTitle() {
+            // Use first user message as title, or default
+            const firstUserMsg = currentSessionMessages.find(m => m.role === 'user');
+            if (firstUserMsg) {
+                const title = firstUserMsg.content.slice(0, 50);
+                return title.length < firstUserMsg.content.length ? title + '...' : title;
+            }
+            return 'New Session';
+        }
+
+        function saveCurrentSession() {
+            if (currentSessionMessages.length === 0) return null;
+
+            const session = getCurrentSession();
+            const history = getSessionHistory();
+
+            // Check if session already exists, update it
+            const existingIndex = history.findIndex(s => s.id === session.id);
+            if (existingIndex >= 0) {
+                history[existingIndex] = session;
+            } else {
+                history.unshift(session); // Add to beginning
+            }
+
+            // Keep only last 50 sessions
+            if (history.length > 50) {
+                history.pop();
+            }
+
+            saveSessionHistory(history);
+            renderChatHistory();
+            return session;
+        }
+
+        function addMessageToSession(role, content) {
+            currentSessionMessages.push({
+                role,
+                content,
+                timestamp: Date.now()
+            });
+            // Auto-save periodically
+            if (currentSessionMessages.length % 2 === 0) {
+                saveCurrentSession();
+            }
+        }
+
+        function startNewSession() {
+            currentSessionId = generateSessionId();
+            currentSessionMessages = [];
+        }
+
+        function deleteSession(sessionId) {
+            const history = getSessionHistory();
+            const filtered = history.filter(s => s.id !== sessionId);
+            saveSessionHistory(filtered);
+            renderChatHistory();
+        }
+
+        function formatRelativeDate(timestamp) {
+            const now = new Date();
+            const date = new Date(timestamp);
+            const diffDays = Math.floor((now - date) / (1000 * 60 * 60 * 24));
+
+            if (diffDays === 0) return 'Today';
+            if (diffDays === 1) return 'Yesterday';
+            if (diffDays < 7) return 'Previous 7 Days';
+            if (diffDays < 30) return 'Previous 30 Days';
+            return 'Older';
+        }
+
+        function renderChatHistory() {
+            const history = getSessionHistory();
+
+            if (history.length === 0) {
+                chatHistoryContainer.innerHTML = `
+                    <div class="sidebar-section">
+                        <span class="sidebar-label">No History</span>
+                        <p class="history-empty">Your chat sessions will appear here</p>
+                    </div>
+                `;
+                return;
+            }
+
+            // Group by relative date
+            const groups = {};
+            history.forEach(session => {
+                const group = formatRelativeDate(session.startedAt);
+                if (!groups[group]) groups[group] = [];
+                groups[group].push(session);
+            });
+
+            let html = '';
+            const groupOrder = ['Today', 'Yesterday', 'Previous 7 Days', 'Previous 30 Days', 'Older'];
+
+            for (const group of groupOrder) {
+                if (!groups[group]) continue;
+
+                html += `<div class="sidebar-section">
+                    <span class="sidebar-label">${group}</span>`;
+
+                for (const session of groups[group]) {
+                    const isActive = session.id === currentSessionId;
+                    html += `
+                        <div class="chat-history-item ${isActive ? 'active' : ''}" data-session-id="${session.id}">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                            </svg>
+                            <span class="history-title">${escapeHtml(session.title)}</span>
+                            <button class="history-delete" data-session-id="${session.id}" title="Delete">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M18 6L6 18M6 6l12 12"/>
+                                </svg>
+                            </button>
+                        </div>
+                    `;
+                }
+
+                html += `</div>`;
+            }
+
+            chatHistoryContainer.innerHTML = html;
+
+            // Add click handlers
+            chatHistoryContainer.querySelectorAll('.chat-history-item').forEach(item => {
+                item.addEventListener('click', (e) => {
+                    if (e.target.closest('.history-delete')) return;
+                    const sessionId = item.dataset.sessionId;
+                    loadSession(sessionId);
+                });
+            });
+
+            chatHistoryContainer.querySelectorAll('.history-delete').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const sessionId = btn.dataset.sessionId;
+                    if (confirm('Delete this session?')) {
+                        deleteSession(sessionId);
+                    }
+                });
+            });
+        }
+
+        function loadSession(sessionId) {
+            const history = getSessionHistory();
+            const session = history.find(s => s.id === sessionId);
+
+            if (!session) return;
+
+            // Save current session first if it has messages
+            if (currentSessionMessages.length > 0) {
+                saveCurrentSession();
+            }
+
+            // Clear current chat
+            clearChatUI();
+
+            // Load session messages
+            currentSessionId = session.id;
+            currentSessionMessages = session.messages || [];
+
+            // Render messages
+            hideWelcomeScreen();
+            session.messages.forEach(msg => {
+                if (msg.role === 'user') {
+                    createMessageElement('user', msg.content);
+                } else {
+                    const content = createMessageElement('assistant', msg.content);
+                    const messageRow = content.closest('.message-row');
+                    if (messageRow) {
+                        addMessageActions(messageRow);
+                    }
+                }
+            });
+
+            // Show notice that this is a past session
+            const notice = document.createElement('div');
+            notice.className = 'session-notice';
+            notice.innerHTML = `
+                <span>Viewing past session</span>
+                <button onclick="continueSession()">Continue this conversation</button>
+            `;
+            chatContainer.appendChild(notice);
+
+            scrollToBottom();
+            renderChatHistory();
+        }
+
+        function continueSession() {
+            // Remove the notice
+            const notice = document.querySelector('.session-notice');
+            if (notice) notice.remove();
+
+            // Session is already loaded, just allow input
+            // The next message will continue from here
+        }
+
+        function clearChatUI() {
+            // Remove all messages but keep welcome screen
+            const messages = chatContainer.querySelectorAll('.message-row, .session-notice');
+            messages.forEach(m => m.remove());
+        }
+
+        // Initialize session on load
+        startNewSession();
+        renderChatHistory();
+
+        // Learner ID persistence
+        const learnerIdInput = document.getElementById('learnerIdInput');
+        const savedIndicator = document.getElementById('savedIndicator');
+        let saveTimeout = null;
+
+        // Load learner ID from localStorage on page load
+        function loadLearnerId() {
+            const savedId = localStorage.getItem('avaia_learner_id');
+            if (savedId) {
+                learnerIdInput.value = savedId;
+            }
+        }
+
+        // Save learner ID to localStorage with debounce
+        function saveLearnerId() {
+            const learnerId = learnerIdInput.value.trim();
+            if (learnerId) {
+                localStorage.setItem('avaia_learner_id', learnerId);
+                showSavedIndicator();
+            } else {
+                localStorage.removeItem('avaia_learner_id');
+            }
+        }
+
+        function showSavedIndicator() {
+            savedIndicator.classList.add('visible');
+            setTimeout(() => {
+                savedIndicator.classList.remove('visible');
+            }, 2000);
+        }
+
+        // Get current learner ID
+        function getLearnerId() {
+            return learnerIdInput.value.trim() || localStorage.getItem('avaia_learner_id') || '';
+        }
+
+        // Debounced save on input
+        learnerIdInput.addEventListener('input', () => {
+            if (saveTimeout) clearTimeout(saveTimeout);
+            saveTimeout = setTimeout(saveLearnerId, 500);
+        });
+
+        // Save on blur
+        learnerIdInput.addEventListener('blur', saveLearnerId);
+
+        // Load on page load
+        loadLearnerId();
+
+        // Model selection persistence
+        const modelSelect = document.getElementById('modelSelect');
+
+        function loadModelSelection() {
+            const savedModel = localStorage.getItem('avaia_model');
+            if (savedModel) {
+                modelSelect.value = savedModel;
+            }
+        }
+
+        function saveModelSelection() {
+            localStorage.setItem('avaia_model', modelSelect.value);
+            showSavedIndicator();
+        }
+
+        function getSelectedModel() {
+            return modelSelect.value || 'sonnet';
+        }
+
+        modelSelect.addEventListener('change', saveModelSelection);
+        loadModelSelection();
+
+        // Voice recognition setup - Whisper WASM via Transformers.js
+        const voiceBtn = document.getElementById('voiceBtn');
+        let isRecording = false;
+        let mediaRecorder = null;
+        let audioChunks = [];
+        let whisperPipeline = null;
+        let isLoadingModel = false;
+
+        // Status display for model loading
+        function updateVoiceStatus(text) {
+            voiceBtn.title = text;
+        }
+
+        // Initialize Whisper model (lazy load on first use)
+        async function initWhisper() {
+            if (whisperPipeline) return true;
+            if (isLoadingModel) return false;
+
+            isLoadingModel = true;
+            updateVoiceStatus('Loading Whisper model (~31MB)...');
+            voiceBtn.classList.add('loading');
+
+            try {
+                // Wait for Transformers.js to be available
+                let attempts = 0;
+                while (!window.TransformersJS && attempts < 50) {
+                    await new Promise(r => setTimeout(r, 100));
+                    attempts++;
+                }
+
+                if (!window.TransformersJS) {
+                    throw new Error('Transformers.js not loaded');
+                }
+
+                whisperPipeline = await window.TransformersJS.pipeline(
+                    'automatic-speech-recognition',
+                    'Xenova/whisper-tiny.en',
+                    {
+                        progress_callback: (progress) => {
+                            if (progress.status === 'progress') {
+                                const pct = Math.round(progress.progress);
+                                updateVoiceStatus(`Loading model: ${pct}%`);
+                            }
+                        }
+                    }
+                );
+
+                updateVoiceStatus('Voice input ready (Whisper)');
+                voiceBtn.classList.remove('loading');
+                isLoadingModel = false;
+                return true;
+            } catch (error) {
+                console.error('Failed to load Whisper:', error);
+                updateVoiceStatus('Whisper failed - using fallback');
+                voiceBtn.classList.remove('loading');
+                isLoadingModel = false;
+                return false;
+            }
+        }
+
+        // Convert audio blob to format Whisper can process
+        async function transcribeAudio(audioBlob) {
+            try {
+                // Convert blob to array buffer
+                const arrayBuffer = await audioBlob.arrayBuffer();
+
+                // Create audio context for resampling to 16kHz mono
+                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+
+                // Resample to 16kHz mono
+                const offlineContext = new OfflineAudioContext(1, audioBuffer.duration * 16000, 16000);
+                const source = offlineContext.createBufferSource();
+                source.buffer = audioBuffer;
+                source.connect(offlineContext.destination);
+                source.start();
+
+                const resampledBuffer = await offlineContext.startRendering();
+                const audioData = resampledBuffer.getChannelData(0);
+
+                // Transcribe with Whisper
+                updateVoiceStatus('Transcribing...');
+                const result = await whisperPipeline(audioData, {
+                    chunk_length_s: 30,
+                    stride_length_s: 5,
+                    language: 'english',
+                    task: 'transcribe',
+                });
+
+                updateVoiceStatus('Voice input ready (Whisper)');
+                return result.text.trim();
+            } catch (error) {
+                console.error('Transcription error:', error);
+                updateVoiceStatus('Transcription failed');
+                return '';
+            }
+        }
+
+        async function startRecording() {
+            // Try to init Whisper first
+            const whisperReady = await initWhisper();
+
+            if (!whisperReady) {
+                // Fallback to Web Speech API if Whisper fails
+                if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+                    startWebSpeechRecording();
+                    return;
+                }
+                alert('Speech recognition not available. Try Chrome or Edge.');
+                return;
+            }
+
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
+                audioChunks = [];
+
+                mediaRecorder.ondataavailable = (event) => {
+                    if (event.data.size > 0) {
+                        audioChunks.push(event.data);
+                    }
+                };
+
+                mediaRecorder.onstop = async () => {
+                    const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                    stream.getTracks().forEach(track => track.stop());
+
+                    if (audioBlob.size > 0) {
+                        const transcript = await transcribeAudio(audioBlob);
+                        if (transcript) {
+                            messageInput.value += transcript;
+                            updateSendButton();
+                        }
+                    }
+
+                    voiceBtn.classList.remove('recording');
+                };
+
+                mediaRecorder.start();
+                isRecording = true;
+                voiceBtn.classList.add('recording');
+                updateVoiceStatus('Recording... Click to stop');
+            } catch (error) {
+                console.error('Failed to start recording:', error);
+                alert('Could not access microphone. Please allow microphone access.');
+            }
+        }
+
+        function stopRecording() {
+            if (mediaRecorder && mediaRecorder.state === 'recording') {
+                mediaRecorder.stop();
+            }
+            isRecording = false;
+        }
+
+        // Fallback: Web Speech API
+        let webSpeechRecognition = null;
+        function startWebSpeechRecording() {
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            webSpeechRecognition = new SpeechRecognition();
+            webSpeechRecognition.continuous = true;
+            webSpeechRecognition.interimResults = true;
+            webSpeechRecognition.lang = 'en-US';
+
+            webSpeechRecognition.onresult = (event) => {
+                for (let i = event.resultIndex; i < event.results.length; i++) {
+                    if (event.results[i].isFinal) {
+                        messageInput.value += event.results[i][0].transcript;
+                        updateSendButton();
+                    }
+                }
+            };
+
+            webSpeechRecognition.onerror = (event) => {
+                console.error('Speech recognition error:', event.error);
+                stopRecording();
+            };
+
+            webSpeechRecognition.start();
+            isRecording = true;
+            voiceBtn.classList.add('recording');
+        }
+
+        function toggleRecording() {
+            if (isRecording) {
+                stopRecording();
+                if (webSpeechRecognition) {
+                    webSpeechRecognition.stop();
+                    webSpeechRecognition = null;
+                }
+            } else {
+                startRecording();
+            }
+        }
+
+        // Text-to-Speech for AI responses - Web Speech API with smart voice selection
+        let currentUtterance = null;
+        let ttsVoices = [];
+
+        // Load voices (they load asynchronously)
+        function loadVoices() {
+            ttsVoices = window.speechSynthesis?.getVoices() || [];
+            console.log(`Loaded ${ttsVoices.length} TTS voices`);
+        }
+
+        // Load voices on init and when they change
+        if ('speechSynthesis' in window) {
+            loadVoices();
+            window.speechSynthesis.onvoiceschanged = loadVoices;
+        }
+
+        // Find the best available voice
+        function getBestVoice() {
+            if (ttsVoices.length === 0) {
+                ttsVoices = window.speechSynthesis?.getVoices() || [];
+            }
+
+            // Priority order for natural-sounding voices
+            const preferredVoices = [
+                'Samantha',           // macOS - very natural
+                'Karen',              // macOS Australian
+                'Daniel',             // macOS British
+                'Google UK English Female',
+                'Google UK English Male',
+                'Google US English',
+                'Microsoft Zira',     // Windows
+                'Microsoft David',    // Windows
+            ];
+
+            for (const preferred of preferredVoices) {
+                const voice = ttsVoices.find(v => v.name.includes(preferred));
+                if (voice) return voice;
+            }
+
+            // Fallback: first English voice
+            const englishVoice = ttsVoices.find(v => v.lang.startsWith('en'));
+            if (englishVoice) return englishVoice;
+
+            // Last resort: first available voice
+            return ttsVoices[0] || null;
+        }
+
+        function speakText(text) {
+            // Stop any current speech
+            window.speechSynthesis?.cancel();
+            currentUtterance = null;
+
+            if (!('speechSynthesis' in window)) {
+                console.error('Speech synthesis not supported');
+                return;
+            }
+
+            // Clean text (remove markdown formatting)
+            const cleanText = text
+                .replace(/```[\s\S]*?```/g, ' code block ')  // Code blocks
+                .replace(/`([^`]+)`/g, '$1')                  // Inline code
+                .replace(/\*\*([^*]+)\*\*/g, '$1')            // Bold
+                .replace(/\*([^*]+)\*/g, '$1')                // Italic
+                .replace(/_{1,2}([^_]+)_{1,2}/g, '$1')        // Underscores
+                .replace(/#+\s*/g, '')                         // Headers
+                .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')      // Links
+                .replace(/^\s*[-*+]\s+/gm, '')                // List markers
+                .replace(/^\s*\d+\.\s+/gm, '')                // Numbered lists
+                .replace(/\n{2,}/g, '. ')                      // Multiple newlines to pause
+                .replace(/\n/g, ' ')                           // Single newlines to space
+                .replace(/\s+/g, ' ')                          // Collapse whitespace
+                .trim();
+
+            if (!cleanText) return;
+
+            // Split into chunks for long text (prevents cutting off)
+            const maxChunkLength = 200;
+            const chunks = [];
+            let remaining = cleanText;
+
+            while (remaining.length > 0) {
+                if (remaining.length <= maxChunkLength) {
+                    chunks.push(remaining);
+                    break;
+                }
+
+                // Find a good break point (end of sentence or comma)
+                let breakPoint = remaining.lastIndexOf('. ', maxChunkLength);
+                if (breakPoint === -1) breakPoint = remaining.lastIndexOf(', ', maxChunkLength);
+                if (breakPoint === -1) breakPoint = remaining.lastIndexOf(' ', maxChunkLength);
+                if (breakPoint === -1) breakPoint = maxChunkLength;
+
+                chunks.push(remaining.slice(0, breakPoint + 1));
+                remaining = remaining.slice(breakPoint + 1).trim();
+            }
+
+            // Speak chunks sequentially
+            const voice = getBestVoice();
+            let chunkIndex = 0;
+
+            function speakNextChunk() {
+                if (chunkIndex >= chunks.length) {
+                    currentUtterance = null;
+                    return;
+                }
+
+                const utterance = new SpeechSynthesisUtterance(chunks[chunkIndex]);
+                utterance.rate = 1.0;
+                utterance.pitch = 1.0;
+                utterance.volume = 1.0;
+
+                if (voice) {
+                    utterance.voice = voice;
+                }
+
+                utterance.onend = () => {
+                    chunkIndex++;
+                    speakNextChunk();
+                };
+
+                utterance.onerror = (e) => {
+                    console.error('TTS error:', e);
+                    currentUtterance = null;
+                };
+
+                currentUtterance = utterance;
+                window.speechSynthesis.speak(utterance);
+            }
+
+            speakNextChunk();
+        }
+
+        function stopSpeaking() {
+            window.speechSynthesis?.cancel();
+            currentUtterance = null;
+        }
+
+        // Add event listener for voice button
+        voiceBtn.addEventListener('click', toggleRecording);
+
+        // Configure marked
+        marked.setOptions({
+            breaks: true,
+            gfm: true,
+            highlight: function (code, lang) {
+                if (lang && hljs.getLanguage(lang)) {
+                    try {
+                        return hljs.highlight(code, { language: lang }).value;
+                    } catch (e) { }
+                }
+                return hljs.highlightAuto(code).value;
+            }
+        });
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function setStatus(connected, text) {
+            const dot = statusEl.querySelector('.status-dot');
+            const textEl = statusEl.querySelector('.status-text');
+            dot.className = 'status-dot ' + (connected ? 'connected' : 'disconnected');
+            textEl.textContent = text || (connected ? 'Connected' : 'Disconnected');
+        }
+
+        function hideWelcomeScreen() {
+            if (welcomeScreen) {
+                welcomeScreen.style.display = 'none';
+            }
+        }
+
+        function showWelcomeScreen() {
+            if (welcomeScreen) {
+                welcomeScreen.style.display = 'flex';
+            }
+        }
+
+        function createMessageElement(type, content = '') {
+            hideWelcomeScreen();
+
+            const messageRow = document.createElement('div');
+            messageRow.className = `message-row ${type}`;
+
+            const avatar = document.createElement('div');
+            avatar.className = 'avatar';
+
+            if (type === 'user') {
+                avatar.innerHTML = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>';
+            } else {
+                avatar.innerHTML = '<span>A</span>';
+            }
+
+            const messageContent = document.createElement('div');
+            messageContent.className = 'message-content';
+
+            if (content) {
+                messageContent.innerHTML = type === 'user' ? escapeHtml(content) : renderMarkdown(content);
+            }
+
+            messageRow.appendChild(avatar);
+            messageRow.appendChild(messageContent);
+
+            // For assistant messages, add a separate actions container that won't be overwritten
+            if (type === 'assistant') {
+                const actionsRow = document.createElement('div');
+                actionsRow.className = 'message-actions-row';
+                actionsRow.dataset.forMessage = Date.now(); // Link to message
+                messageRow.appendChild(actionsRow);
+            }
+
+            chatContainer.appendChild(messageRow);
+
+            return messageContent;
+        }
+
+        function addUserMessage(text) {
+            createMessageElement('user', text);
+            scrollToBottom();
+        }
+
+        // Add action buttons to a completed assistant message
+        function addMessageActions(messageRow) {
+            const actionsRow = messageRow.querySelector('.message-actions-row');
+            const messageContent = messageRow.querySelector('.message-content');
+
+            if (!actionsRow || !messageContent || actionsRow.children.length > 0) return;
+
+            const actions = document.createElement('div');
+            actions.className = 'message-actions';
+
+            // Copy button
+            const copyBtn = document.createElement('button');
+            copyBtn.className = 'action-btn';
+            copyBtn.title = 'Copy to clipboard';
+            copyBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>';
+            copyBtn.onclick = async () => {
+                const text = messageContent.textContent;
+                try {
+                    await navigator.clipboard.writeText(text);
+                    copyBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>';
+                    copyBtn.title = 'Copied!';
+                    setTimeout(() => {
+                        copyBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>';
+                        copyBtn.title = 'Copy to clipboard';
+                    }, 2000);
+                } catch (err) {
+                    console.error('Copy failed:', err);
+                }
+            };
+
+            // Speak button
+            const speakBtn = document.createElement('button');
+            speakBtn.className = 'action-btn';
+            speakBtn.title = 'Read aloud';
+            speakBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>';
+            speakBtn.onclick = () => {
+                const text = messageContent.textContent;
+                speakBtn.classList.toggle('speaking');
+                if (speakBtn.classList.contains('speaking')) {
+                    speakText(text);
+                    // Remove speaking class when done
+                    const checkSpeaking = setInterval(() => {
+                        if (!window.speechSynthesis?.speaking) {
+                            speakBtn.classList.remove('speaking');
+                            clearInterval(checkSpeaking);
+                        }
+                    }, 200);
+                } else {
+                    stopSpeaking();
+                }
+            };
+
+            actions.appendChild(copyBtn);
+            actions.appendChild(speakBtn);
+            actionsRow.appendChild(actions);
+        }
+
+        function addThinkingIndicator() {
+            const messageRow = document.createElement('div');
+            messageRow.className = 'message-row assistant';
+            messageRow.id = 'thinking-indicator';
+
+            const avatar = document.createElement('div');
+            avatar.className = 'avatar';
+            avatar.innerHTML = '<span>A</span>';
+
+            const thinking = document.createElement('div');
+            thinking.className = 'thinking-indicator';
+            thinking.innerHTML = '<span></span><span></span><span></span>';
+
+            messageRow.appendChild(avatar);
+            messageRow.appendChild(thinking);
+            chatContainer.appendChild(messageRow);
+            // Ensure thinking indicator is visible
+            requestAnimationFrame(() => scrollToBottom());
+        }
+
+        function removeThinkingIndicator() {
+            const indicator = document.getElementById('thinking-indicator');
+            if (indicator) indicator.remove();
+        }
+
+        function processOutput(text) {
+            // Clean ANSI codes
+            text = text.replace(/\x1b\[[0-9;]*[a-zA-Z]/g, '');
+            text = text.replace(/\x1b\][^\x07]*\x07/g, '');
+            // Remove box drawing characters
+            text = text.replace(/[─│╭╮╰╯┌┐└┘├┤┬┴┼]/g, '');
+            return text;
+        }
+
+        function renderMarkdown(text) {
+            try {
+                const cleaned = processOutput(text);
+                const html = marked.parse(cleaned);
+                return DOMPurify.sanitize(html);
+            } catch (e) {
+                return escapeHtml(text);
+            }
+        }
+
+        function scrollToBottom() {
+            // Use requestAnimationFrame to ensure DOM has updated before scrolling
+            requestAnimationFrame(() => {
+                chatContainer.scrollTop = chatContainer.scrollHeight;
+            });
+        }
+
+        function scheduleRender() {
+            if (renderTimeout) clearTimeout(renderTimeout);
+            renderTimeout = setTimeout(() => {
+                if (currentResponse && outputBuffer) {
+                    currentResponse.innerHTML = renderMarkdown(outputBuffer);
+                    scrollToBottom();
+                }
+            }, 50);
+        }
+
+        function updateSendButton() {
+            const hasText = messageInput.value.trim().length > 0;
+            sendBtn.disabled = !hasText || isWaiting;
+        }
+
+        // Socket events
+        socket.on('connect', () => {
+            console.log('Socket connected');
+        });
+
+        socket.on('status', (data) => {
+            if (data.connected) {
+                setStatus(true, data.restarted ? 'Reconnected' : 'Connected');
+                // Don't clear messages on reconnect - preserve chat history
+                if (data.restarted) {
+                    console.log('Socket reconnected, preserving messages');
+                }
+            } else {
+                setStatus(false, data.error || 'Disconnected');
+            }
+        });
+
+        socket.on('output', (data) => {
+            removeThinkingIndicator();
+            if (!currentResponse) {
+                currentResponse = createMessageElement('assistant');
+            }
+            outputBuffer += data.data;
+            scheduleRender();
+            // Also scroll immediately on each chunk for better UX
+            scrollToBottom();
+        });
+
+        socket.on('response_complete', () => {
+            isWaiting = false;
+            updateSendButton();
+
+            // Track assistant message in session
+            if (outputBuffer) {
+                addMessageToSession('assistant', outputBuffer);
+            }
+
+            // Add action buttons to the completed message
+            if (currentResponse) {
+                const messageRow = currentResponse.closest('.message-row');
+                if (messageRow) {
+                    addMessageActions(messageRow);
+                }
+            }
+
+            currentResponse = null;
+            outputBuffer = '';
+
+            // Final scroll after buttons added
+            scrollToBottom();
+        });
+
+        socket.on('process_ended', () => {
+            setStatus(false, 'Process ended');
+            isWaiting = false;
+            updateSendButton();
+            removeThinkingIndicator();
+            currentResponse = null;
+            outputBuffer = '';
+        });
+
+        socket.on('error', (data) => {
+            console.error('Socket error:', data);
+            setStatus(false, 'Error: ' + data.message);
+            isWaiting = false;
+            updateSendButton();
+            removeThinkingIndicator();
+        });
+
+        socket.on('disconnect', () => {
+            setStatus(false, 'Disconnected');
+        });
+
+        // Send message
+        function sendMessage(text) {
+            const message = text || messageInput.value.trim();
+            if (!message || isWaiting) return;
+
+            addUserMessage(message);
+            addMessageToSession('user', message); // Track in session
+            addThinkingIndicator();
+            socket.emit('input', {
+                message,
+                learner_id: getLearnerId(),
+                model: getSelectedModel()
+            });
+
+            isWaiting = true;
+            currentResponse = null;
+            outputBuffer = '';
+
+            messageInput.value = '';
+            messageInput.style.height = 'auto';
+            updateSendButton();
+        }
+
+        // Event listeners
+        sendBtn.addEventListener('click', () => sendMessage());
+
+        messageInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
+            }
+        });
+
+        messageInput.addEventListener('input', () => {
+            messageInput.style.height = 'auto';
+            messageInput.style.height = Math.min(messageInput.scrollHeight, 200) + 'px';
+            updateSendButton();
+        });
+
+        // Paste support for PyWebView on macOS
+        messageInput.addEventListener('paste', (e) => {
+            e.preventDefault();
+            const text = (e.clipboardData || window.clipboardData).getData('text');
+            const start = messageInput.selectionStart;
+            const end = messageInput.selectionEnd;
+            const currentValue = messageInput.value;
+            messageInput.value = currentValue.substring(0, start) + text + currentValue.substring(end);
+            messageInput.selectionStart = messageInput.selectionEnd = start + text.length;
+            messageInput.dispatchEvent(new Event('input'));
+        });
+
+        // Restart button (New Chat)
+        restartBtn.addEventListener('click', async () => {
+            if (currentSessionMessages.length === 0) {
+                // No messages, just reset
+                showWelcomeScreen();
+                return;
+            }
+
+            if (confirm('Start a new chat? This will save and end the current session.')) {
+                setStatus(false, 'Ending session...');
+
+                // Save current session to history
+                saveCurrentSession();
+
+                // Tell server to end the session (which will call end_session MCP)
+                socket.emit('end_session', {
+                    learner_id: getLearnerId(),
+                    session_summary: generateSessionSummary()
+                });
+
+                // Reset UI
+                clearChatUI();
+                showWelcomeScreen();
+                startNewSession();
+                renderChatHistory();
+
+                // Tell server to restart Claude process
+                socket.emit('restart');
+            }
+        });
+
+        function generateSessionSummary() {
+            // Generate a brief summary of the session for end_session notes
+            const userMessages = currentSessionMessages.filter(m => m.role === 'user');
+            const assistantMessages = currentSessionMessages.filter(m => m.role === 'assistant');
+
+            let summary = `Session had ${userMessages.length} user messages and ${assistantMessages.length} assistant responses. `;
+
+            if (userMessages.length > 0) {
+                summary += `Topics discussed: ${userMessages.slice(0, 3).map(m => m.content.slice(0, 50)).join('; ')}`;
+            }
+
+            return summary;
+        }
+
+        // Mobile menu toggle
+        menuToggle.addEventListener('click', () => {
+            sidebar.classList.toggle('open');
+        });
+
+        // Suggestion cards
+        document.querySelectorAll('.suggestion-card').forEach(card => {
+            card.addEventListener('click', () => {
+                const message = card.dataset.message;
+                if (message) {
+                    sendMessage(message);
+                }
+            });
+        });
+
+        // Close sidebar when clicking outside on mobile
+        document.addEventListener('click', (e) => {
+            if (window.innerWidth <= 768) {
+                if (!sidebar.contains(e.target) && !menuToggle.contains(e.target)) {
+                    sidebar.classList.remove('open');
+                }
+            }
+        });
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,86 @@
+### Part B: The API Contract Template (`specs/contracts/_template.yaml`)
+
+This **OpenAPI 3.1** skeleton enforces **Design by Contract (DbC)**. It pre-defines standard error schemas (RFC 7807) and security schemes so coding agents do not hallucinate non-standard error handling.
+
+```yaml
+openapi: 3.1.0
+info:
+  title: "Service Contract Template"
+  version: "1.0.0"
+  description: >
+    Strict API contract for Feature Ticket implementation. 
+    Agents MUST extend this skeleton. DO NOT modify the standard error schemas.
+  license:
+    name: "Proprietary"
+
+servers:
+  - url: /api/v1
+    description: Production API
+
+# -----------------------------------------------------------------------------
+# SECURITY SCHEMES (Enforced)
+# -----------------------------------------------------------------------------
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: "Standard OIDC/OAuth2 Bearer Token."
+
+# -----------------------------------------------------------------------------
+# STANDARD ERROR SCHEMAS (RFC 7807)
+# Agents must use these for 4xx/5xx responses.
+# -----------------------------------------------------------------------------
+  schemas:
+    ProblemDetails:
+      type: object
+      description: "RFC 7807 Standard Error Response"
+      required: [type, title, status]
+      properties:
+        type:
+          type: string
+          format: uri
+          example: "https://api.example.com/errors/invalid-input"
+        title:
+          type: string
+          example: "Invalid Input"
+        status:
+          type: integer
+          example: 400
+        detail:
+          type: string
+          example: "The field 'email' must be a valid email address."
+        instance:
+          type: string
+          format: uri
+          example: "/api/users/123"
+
+# -----------------------------------------------------------------------------
+# STANDARD RESPONSES
+# -----------------------------------------------------------------------------
+  responses:
+    BadRequest:
+      description: "Invalid input provided."
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
+    
+    Unauthorized:
+      description: "Missing or invalid authentication."
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
+
+    InternalError:
+      description: "Unexpected server error."
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
+
+security:
+  - BearerAuth: []
+```

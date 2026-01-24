@@ -1,0 +1,2258 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://agentic-sdd.com/schemas/prd.json",
+  "meta": {
+    "version": "adr-v4",
+    "status": "APPROVED",
+    "author_agent": "Clarification-Agent-v1",
+    "last_updated": "2026-01-24T00:00:00Z",
+    "legacy_version_analyzed": "1.7.0"
+  },
+  "product_vision": {
+    "high_level_objective": "Avaia is a cross-platform desktop application that teaches programming through AI-powered, evidence-based pedagogy. It uses spaced repetition (FSRS-5), productive failure, and Socratic method to build deep conceptual understanding rather than syntax memorization. The rewrite eliminates Python/Flask architecture in favor of pure TypeScript/Electron, shifts to BYOK (Bring Your Own API Key) for AI access, and adopts a local-first, multi-profile architecture to support families/shared computers without cloud infrastructure.",
+    "target_personas": [
+      {
+        "role": "Self-Directed Learner (Primary)",
+        "goal": "Learn programming from zero to job-ready without traditional courses",
+        "pain_points": [
+          "Tutorial hell: follows guides but can't build independently",
+          "Forgets syntax/concepts after a few days without practice",
+          "AI tutors are sycophantic and give answers instead of teaching",
+          "Cannot afford $50/mo bootcamps or university tuition"
+        ]
+      },
+      {
+        "role": "Career Switcher (Secondary)",
+        "goal": "Transition from non-technical role to software development",
+        "pain_points": [
+          "Limited time (learning after work)",
+          "Needs structured curriculum but with flexibility",
+          "Struggles with abstract CS concepts without real-world context",
+          "Wants proof of progress (portfolio projects)"
+        ]
+      },
+      {
+        "role": "Parent/Guardian (Enabler)",
+        "goal": "Provide child with programming education without subscriptions",
+        "pain_points": [
+          "Cannot afford multiple $20/mo seats for kids",
+          "Wants privacy (no data sent to EdTech companies)",
+          "Needs child-safe content (no unmoderated AI responses)"
+        ]
+      }
+    ],
+    "success_metrics": [
+      "User completes first project within 7 days of onboarding",
+      "70% of introduced concepts are verified (pass diagnostic questions) within session",
+      "Average session length: 45-60 minutes (engagement without burnout)",
+      "FSRS review completion rate > 80% (users return for spaced repetition)",
+      "AI cost per user < $10/month (BYOK sustainability)",
+      "Zero crash rate on core learning loop (WebContainer + Session flow)",
+      "App bundle size < 150MB (Electron + dependencies)"
+    ]
+  },
+  "clarification_log": [
+    {
+      "question": "Deployment & Platform Strategy: Cloud-Native SaaS, Cross-Platform Desktop, or Hybrid?",
+      "user_answer": "Cross-Platform Desktop (Electron + TypeScript). Local-first to avoid server costs. Users can backup to their own cloud (iCloud, Dropbox, Google Drive).",
+      "impact_on_spec": "Eliminated Python/Flask. Shifted to Electron main + renderer process. SQLite remains but path changes to Electron userData directory. Removed all server-side features."
+    },
+    {
+      "question": "AI Access Model: API Key (BYOK) or Managed Subscription?",
+      "user_answer": "API Key (BYOK) with better UX. Build an in-app wizard to guide users through Anthropic Console signup. Cost: ~$2-8/mo per heavy learner.",
+      "impact_on_spec": "Added FEAT-002 (API Key Onboarding Wizard). Removed any OAuth/SSO login features. Added prompt caching constraint to reduce token costs."
+    },
+    {
+      "question": "Curriculum Distribution: npm packages or Remote Fetch?",
+      "user_answer": "Remote fetch from GitHub Raw URL or S3. Allows zero-friction curriculum updates without app reinstall.",
+      "impact_on_spec": "Added FEAT-003 (Curriculum Update Engine). Curriculum is now a versioned JSON schema fetched on app startup."
+    },
+    {
+      "question": "Voice Input/Output Priority?",
+      "user_answer": "Cut Text-to-Speech (TTS) for MVP. Focus on text-based chat. Voice input can be deferred.",
+      "impact_on_spec": "Removed all TTS/Speech Synthesis features from legacy. Whisper WASM voice input moved to P2."
+    },
+    {
+      "question": "Multi-Tenancy: Single-Player or Multi-Profile?",
+      "user_answer": "Multi-Profile (like Netflix). Supports families/shared computers. Each profile gets isolated SQLite database.",
+      "impact_on_spec": "Added FEAT-001 (Profile Management). Each profile has separate Electron userData directory (app.getPath('userData'))/profiles/{profile_id}/avaia.db file."
+    },
+    {
+      "question": "Offline Capability?",
+      "user_answer": "Internet required for AI features. Acceptable trade-off.",
+      "impact_on_spec": "No local LLM fallback. App displays 'Reconnecting...' message if network drops mid-session."
+    },
+    {
+      "question": "Code Execution Sandbox: Naked, WebContainers, or Docker?",
+      "user_answer": "WebContainers (StackBlitz). Safe, instant, no Docker friction. Auto-installs ts-node for TypeScript compilation.",
+      "impact_on_spec": "Added FEAT-012 (WebContainer Integration). Constraint: Curriculum focuses on Web/JS/TS. Python via Pyodide is P2."
+    },
+    {
+      "question": "Telemetry: None or Minimal?",
+      "user_answer": "Minimal (PostHog/Sentry). Track crashes and anonymous usage patterns.",
+      "impact_on_spec": "Added FEAT-030 (Error Reporting). PII-free crash logs sent to Sentry. Usage events (session start, concept introduced) sent to PostHog."
+    },
+    {
+      "question": "FSRS-5 Spaced Repetition Priority?",
+      "user_answer": "P0 (MVP Blocker). Without reviews, learners forget. Must ship with it.",
+      "impact_on_spec": "Retained all FSRS-5 tools and concept_memory state machine from legacy. Added TypeScript port requirement."
+    },
+    {
+      "note": "2026-01-24: Added diagnostic_question.question_type (application|discrimination) to support Layer 3 discrimination questions via get_diagnostic_question.",
+      "impact_on_spec": "Changelog note; kept for traceability."
+    }
+  ],
+  "non_functional_requirements": {
+    "security_compliance": [
+      "No plaintext API keys in localStorage (use Electron safeStorage API)",
+      "WebContainer sandboxing prevents file system access outside virtualized environment",
+      "DOMPurify for markdown rendering (XSS protection)",
+      "No PII in telemetry (learner names hashed, code snippets excluded)",
+      "GDPR-compliant: User can export all data via JSON dump, delete profile entirely"
+    ],
+    "performance": [
+      "App cold start < 3 seconds on mid-range laptop (2020 MacBook Air baseline)",
+      "WebContainer boot time < 2 seconds for new project",
+      "AI response streaming (first token < 500ms with prompt caching)",
+      "SQLite query time < 50ms for session history fetch (indexed by learner_id + timestamp)",
+      "Curriculum fetch < 1 second (GitHub Raw URL cached for 1 hour)",
+      "FSRS review calculation < 100ms (TypeScript FSRS-5 algorithm)"
+    ],
+    "scalability": "start-up",
+    "reliability": [
+      "Session continuity: If app crashes mid-session, reopen resumes from last milestone",
+      "Database migrations: Versioned schema upgrades (idempotent, rollback-safe)",
+      "Preflight checks: Validate API key, internet connection, SQLite integrity on app launch",
+      "Auto-save: Project state persists every 30 seconds during active session"
+    ],
+    "usability": [
+      "First-time user completes onboarding in < 5 minutes",
+      "Profile switcher accessible via top-right avatar (< 2 clicks)",
+      "Markdown rendering with syntax highlighting (highlight.js) for code blocks",
+      "Dark mode + light mode (respects OS setting)",
+      "Keyboard shortcuts: Cmd/Ctrl+N (new session), Cmd/Ctrl+R (reviews), Cmd/Ctrl+P (projects)"
+    ],
+    "maintainability": [
+      "100% TypeScript (no JavaScript files except bundler config)",
+      "Zod schemas for all API payloads (runtime validation)",
+      "Modular tool architecture (tools/ directory, one file per tool)",
+      "Comprehensive JSDoc comments for all public functions",
+      "GitHub Actions CI: Lint, type-check, unit tests on every commit"
+    ],
+    "distribution_installation": [
+      "Packaged desktop releases only: ship as installable artefacts (Windows .exe/.msi, macOS .dmg, Linux AppImage) built via electron-builder.",
+      "Zero external runtime requirements: end users must not need Node.js, Python, Git, or build tooling installed to install/run the app.",
+      "Bundled runtime boundaries: Electron + all TypeScript/JS dependencies are packaged with the app; any future native/helper binaries must be bundled (no system installs).",
+      "Clean install + upgrade support: installers must work on a clean machine and upgrades must preserve userData (profiles/*/progress.db, curriculum.db, global .api_key, logs).",
+      "Release validation: every release must be tested on a clean machine profile with no Node/Python present; app must launch and function offline (except API calls) after install.",
+      "Code signing/notarisation: required for public distribution; until enabled for internal testing, release notes must document OS prompts/workarounds (e.g., Windows SmartScreen, macOS Gatekeeper)."
+    ]
+  },
+  "pedagogical_constraints": {
+    "research_foundation": "All constraints derived from Avaia Learning Science Architecture v2.0. See companion document for full research citations (32 empirical papers, 1885-2019).",
+    "productive_failure": {
+      "principle": "Learners must struggle with problems BEFORE receiving instruction (Kapur 2008, 2015: Cohen's d=0.36 for transfer)",
+      "requirements": [
+        "Concepts with complexity_level >= 3 MUST have associated sandbox",
+        "Sandbox MUST be triggered BEFORE teaching the concept (temporal ordering)",
+        "Learner MUST make minimum 2-3 attempts before teaching begins",
+        "AI MUST NOT provide hints or help during sandbox phase (enforce productive failure)",
+        "Failure patterns MUST be detected and logged for teaching transition",
+        "If learner bypasses natural impasse (e.g., copy-paste working code), AI MUST inject sandbox retroactively"
+      ],
+      "implementation_notes": "See FEAT-009 for base implementation. Requires FEAT-009A for trigger logic and pattern detection."
+    },
+    "multi_layer_verification": {
+      "principle": "Open-ended questions alone insufficient (learners parrot definitions). Requires 3-layer protocol: Articulation → Application → Discrimination (Chi et al. 1989, Sadler 1998)",
+      "requirements": [
+        "Every concept MUST pass 3 verification layers before advancing to REVIEW state",
+        "Layer 1 (Articulation): Open-ended explanation in learner's own words",
+        "Layer 2 (Application): Diagnostic MCQ with misconception-mapped distractors",
+        "Layer 3 (Discrimination): Comparative question testing ability to choose right tool for context",
+        "Confidence (1-5) MUST be logged with every Layer 2 diagnostic question",
+        "High-confidence errors (confidence >= 4 AND incorrect) MUST trigger hypercorrection protocol",
+        "Concepts cannot move from LEARNING to REVIEW state without passing all 3 layers"
+      ],
+      "implementation_notes": "See FEAT-006 for base. Requires FEAT-006A (3-layer protocol) and FEAT-006B (confidence tracking + hypercorrection)."
+    },
+    "cognitive_load_limits": {
+      "principle": "Working memory capacity ~4 chunks (Cowan 2001). Exceeding limit causes shallow encoding, copy-paste behavior (Sweller 1988, Mayer 2002)",
+      "requirements": [
+        "Projects introducing >3 conceptually-distinct domains MUST be rejected or split",
+        "Conceptual domain defined as: distinct knowledge category requiring separate schema (e.g., Runtime vs Framework vs Database vs Security)",
+        "Copy-paste behavior (code identical to examples with zero modifications) MUST be detected",
+        "When copy-paste detected, AI MUST require articulation before allowing progression",
+        "Cognitive overload signals MUST trigger intervention: (1) no learner questions for 20+ min, (2) long pauses >3 min, (3) rapid messages <10 sec apart",
+        "Sessions without learner questions (passive learning) MUST trigger prompt: 'You've been quiet. What's unclear?'"
+      ],
+      "project_complexity_matrix": {
+        "beginner_tier": "Max 2 concept domains, 4-5 milestones",
+        "intermediate_tier": "Max 3 concept domains, 5-7 milestones",
+        "advanced_tier": "Max 4 concept domains, 7-10 milestones"
+      },
+      "implementation_notes": "Requires new FEAT-031 (Cognitive Load Monitoring). Curriculum validation must enforce domain limits."
+    },
+    "spaced_repetition_integration": {
+      "principle": "Without active recall, retention drops to 5% after 60 days (Ebbinghaus 1885). FSRS-5 schedules optimal review intervals (Ye et al. 2019)",
+      "requirements": [
+        "Reviews MUST be integrated invisibly into session workflow (no context-switching to flashcard UI)",
+        "Every session MUST begin with Check-In phase calling get_due_reviews(learner_id)",
+        "Review time MUST be <60 seconds (minimal interruption)",
+        "Reviews CANNOT be skipped or marked optional (non-negotiable for retention)",
+        "Code snippets (max 500 chars) MUST be stored when concept introduced (token efficiency)",
+        "Reviews MUST use stored snippets, NOT full project files",
+        "FSRS state (stability, difficulty, next_review_date) MUST update after EVERY review",
+        "Review format: 'Quick review: In your [Project], what does this line return? [snippet]'"
+      ],
+      "implementation_notes": "See FEAT-005 for FSRS engine. Requires expansion for Check-In integration and FEAT-005A for snippet storage."
+    },
+    "anti_sycophancy_enforcement": {
+      "principle": "Standard LLMs minimize user effort, which minimizes learning (Bjork 1994: desirable difficulties). AI must refuse to bypass productive struggle",
+      "requirements": [
+        "AI MUST NOT use phrases ['Great job!', 'Perfect!', 'Excellent!'] without verification evidence",
+        "AI MUST NOT provide code implementations before verify_concept is called",
+        "AI MUST NOT skip verification to 'save time' or improve user satisfaction",
+        "AI MUST NOT validate incorrect solutions to avoid friction",
+        "Milestone advancement MUST be blocked if verify_concept was not called for all introduced concepts",
+        "System prompt MUST explicitly forbid sycophantic behaviors",
+        "Middleware layer MUST validate: no code blocks in AI response unless verify_concept was called"
+      ],
+      "forbidden_phrases": [
+        "Great job!",
+        "Perfect!",
+        "Excellent!",
+        "Amazing work!",
+        "You got it!",
+        "That's correct without verification"
+      ],
+      "required_phrases": [
+        "Explain why this works",
+        "What would happen if [edge case]",
+        "Walk me through your logic"
+      ],
+      "implementation_notes": "See FEAT-026. Requires promotion to P0 and addition of technical enforcement (middleware validation, tool prerequisites)."
+    },
+    "emotional_state_inference": {
+      "principle": "Timing patterns reveal cognitive/emotional states. Productive struggle differs from destructive frustration (Wood et al. 1976: ZPD boundaries)",
+      "requirements": [
+        "Client MUST inject metadata with every message: {timestamp, time_since_last_msg_ms, session_duration_ms, message_count}",
+        "WITHOUT metadata, emotional state inference is IMPOSSIBLE (non-negotiable client requirement)",
+        "Timing patterns MUST be analyzed: (1) 30-120 sec pauses = productive thinking, (2) >3 min pause = confusion/AFK, (3) <10 sec rapid = panic",
+        "State 'productive_struggle' MUST NOT be interrupted with hints (allow thinking time)",
+        "State 'frustrated' MUST trigger intervention: reduce cognitive load, break problem into smaller steps",
+        "Session duration >90 min MUST trigger break suggestion (cognitive fatigue impairs learning)",
+        "Emotional states MUST be logged to session table for retrospective analysis"
+      ],
+      "metadata_format": "JSON wrapped in XML: <message_metadata>{timestamp, time_since_last_msg_ms, session_duration_ms, message_count}</message_metadata>",
+      "implementation_notes": "See FEAT-025. Requires promotion from P2 to P0 and integration with scaffolding (adaptive hints based on state)."
+    },
+    "confidence_tracking_hypercorrection": {
+      "principle": "High-confidence errors create strongest learning opportunities (Butterfield & Metcalfe 2006: hypercorrection effect). Brain allocates more attention to violated confident predictions",
+      "requirements": [
+        "Confidence (1-5 scale) MUST be logged with: (1) every diagnostic question, (2) every verification attempt, (3) every review event",
+        "High-confidence errors (confidence >= 4 AND incorrect) MUST be flagged as stubborn_misconception",
+        "Stubborn misconceptions MUST trigger IMMEDIATE contrasting case presentation (before any progression)",
+        "Contrasting cases MUST show minimal-difference code snippets (2 examples, 1 line difference)",
+        "Stubborn misconceptions MUST block progression until remediation verified",
+        "Stubborn misconceptions MUST be prioritized in next session Check-In (before new content)",
+        "If stubborn bug persists after 3 remediations, MUST escalate: 'This concept needs instructor review'"
+      ],
+      "confidence_accuracy_matrix": {
+        "high_confidence_correct": "No intervention (mastery)",
+        "low_confidence_correct": "Metacognitive feedback: 'You're correct. What made you doubt?'",
+        "low_confidence_incorrect": "Standard remediation (expected error)",
+        "high_confidence_incorrect": "CRITICAL: Hypercorrection protocol (contrasting case + immediate remediation)"
+      },
+      "implementation_notes": "Requires FEAT-006B. UI must prompt for confidence after every diagnostic answer."
+    },
+    "temporal_ordering_rules": {
+      "principle": "Phase sequence is non-negotiable for pedagogical effectiveness. Violating order undermines learning mechanisms",
+      "requirements": [
+        "Sandbox (if applicable) MUST occur BEFORE teaching",
+        "Teaching MUST occur BEFORE verification",
+        "Verification MUST occur BEFORE milestone advancement",
+        "Reviews MUST occur BEFORE new content introduction (Check-In phase)",
+        "Exit tickets MUST occur at session end if new concepts were introduced",
+        "State transitions MUST follow: NEW → LEARNING → REVIEW → (RELEARNING if forgotten)"
+      ],
+      "violations_that_break_pedagogy": [
+        "Teaching before sandbox: Bypasses productive failure, prevents schema activation",
+        "Advancing before verification: Creates illusion of competence, concept marked REVIEW when still in LEARNING",
+        "Skipping reviews: Forgetting curve wins, retention collapses after 30 days",
+        "No exit ticket: Tutorial hell (learner copied code without understanding)"
+      ],
+      "implementation_notes": "Enforce via tool call prerequisites. Example: advance_milestone requires verify_concept for all concepts in current milestone."
+    },
+    "state_integrity_rules": {
+      "principle": "Database state must accurately reflect learner's knowledge. Corrupted state causes FSRS to schedule reviews for unlearned concepts",
+      "requirements": [
+        "Concepts CANNOT move to REVIEW state without passing verification",
+        "Sessions CANNOT end without exit ticket if new concepts were introduced",
+        "Reviews CANNOT be marked 'skipped' or 'optional' (must complete or explicitly defer)",
+        "FSRS parameters (stability, difficulty, next_review_date) MUST update after every review",
+        "Independence score MUST update based on hint usage: (1) +5 if solved without hints, (2) -5 if multiple hints requested",
+        "Stubborn misconception flags MUST persist until remediation verified"
+      ],
+      "corruption_scenarios_to_prevent": [
+        "Concept in REVIEW state but learner never passed verification: FSRS schedules useless reviews",
+        "Session ends without exit ticket: Learner appears competent, actually doesn't understand",
+        "Review skipped but marked complete: Stability artificially inflated, learner forgets"
+      ],
+      "implementation_notes": "State machine transitions must be validated. Consider adding CHECK constraint in SQLite schema."
+    },
+    "token_efficiency_requirements": {
+      "principle": "Loading full project files for reviews = token explosion. 500-char snippets reduce cost by 10x while maintaining effectiveness",
+      "requirements": [
+        "When concept introduced, code snippet (max 500 chars, ~20 lines) MUST be extracted and stored",
+        "Snippet MUST include context: project name, function name, line numbers",
+        "Reviews MUST use snippets, NOT full files",
+        "If snippet >500 chars, AI MUST summarize: 'const handleClick = (e) => { /* validation */ /* state update */ }'",
+        "Snippet storage MUST occur in introduce_concept tool call",
+        "Review questions MUST be generated from snippets: 'In your [Project], what does this return? [snippet]'"
+      ],
+      "cost_comparison": {
+        "full_file_approach": "~2000 tokens per review (500-line file)",
+        "snippet_approach": "~200 tokens per review (10x reduction)",
+        "impact_at_scale": "Heavy learner (20 reviews/week): $12/mo → $1.20/mo"
+      },
+      "implementation_notes": "Requires FEAT-005A. Snippet extraction logic must be added to introduce_concept."
+    }
+  },
+  "features": [
+    {
+      "id": "FEAT-001",
+      "priority": "P0",
+      "name": "Profile Management System",
+      "user_story": "As a parent with multiple children learning programming, I want to create separate profiles so that each child's progress is isolated and personalized.",
+      "acceptance_criteria": [
+        "Given the app is opened for the first time, When the user reaches the welcome screen, Then a 'Create Profile' button is prominently displayed",
+        "Given a profile name is entered (3-20 characters, alphanumeric + spaces), When the user clicks 'Create Profile', Then a new SQLite database is created at Electron userData directory (app.getPath('userData'))/profiles/{profile_id}/avaia.db",
+        "Given multiple profiles exist, When the user clicks the avatar icon (top-right), Then a dropdown shows all profiles with 'Switch Profile' and 'Manage Profiles' options",
+        "Given a profile is selected, When the user clicks 'Switch Profile', Then the app reloads with the selected profile's data (no data leakage between profiles)",
+        "Given the 'Manage Profiles' screen is open, When the user clicks 'Delete Profile', Then a confirmation dialog warns 'This will permanently delete all progress' and requires re-typing the profile name to confirm"
+      ],
+      "negative_constraints": [
+        "Do NOT allow profile names to contain special characters that break file paths (e.g., /, \\, :, *, ?)",
+        "Do NOT store cross-profile data (e.g., a shared curriculum cache that leaks one learner's code to another)",
+        "Do NOT allow profile deletion without confirmation (prevents accidental data loss)"
+      ],
+      "dependencies": [],
+      "ui_specification": {
+        "screen_name": "Profile Switcher",
+        "location": "Dropdown from header (click profile name)",
+        "purpose": "Switch between profiles or create new ones",
+        "layout": "\n┌──────────────────────────────────────────────────────────┐\n│  Avaia    [Daramola 🚀 ▼]    Settings                    │\n├──────────────────────────────────────────────────────────┤\n│  ┌────────────────────────────────────────────────────┐ │\n│  │  Current Profile                                   │ │\n│  │  🚀 Daramola                               ✓       │ │\n│  │  Last used: 2 minutes ago                          │ │\n│  │  JavaScript/Web Development                        │ │\n│  │  Progress: 2/6 projects                            │ │\n│  │                                                    │ │\n│  │  Other Profiles                                    │ │\n│  │  👶 Child-1                                         │ │\n│  │  Last used: 3 days ago                             │ │\n│  │  Python/Data Science                               │ │\n│  │  Progress: 1/5 projects                            │ │\n│  │                                                    │ │\n│  │  [+ Add New Profile]                               │ │\n│  └────────────────────────────────────────────────────┘ │\n└──────────────────────────────────────────────────────────┘\n        ",
+        "components": [
+          "ProfileDropdown",
+          "CurrentProfile",
+          "ProfileCard",
+          "AddProfileButton",
+          "CreateProfileModal"
+        ],
+        "visual_design": {
+          "dropdown": {
+            "width": "360px",
+            "background": "white",
+            "shadow": "0 10px 40px rgba(0,0,0,0.15)",
+            "border_radius": "12px",
+            "padding": "16px"
+          },
+          "profile_cards": {
+            "padding": "16px",
+            "border_radius": "8px",
+            "hover": "background: #F9FAFB",
+            "active": "background: #EFF6FF, blue left border (4px)"
+          },
+          "avatars": {
+            "size_dropdown": "48px",
+            "size_header": "32px",
+            "selected": "blue ring (4px)"
+          }
+        },
+        "interaction_flow": [
+          "User clicks profile dropdown",
+          "Dropdown opens",
+          "User clicks different profile",
+          "Confirmation: 'Switch to {profile}?'",
+          "IF confirmed: Close active session, switch profile, reload app"
+        ],
+        "create_profile_flow": [
+          "User clicks '+ Add New Profile'",
+          "Show CreateProfileModal",
+          "User enters name + selects avatar",
+          "MCP: Create profile in database",
+          "Copy API key from existing profile",
+          "Switch to new profile",
+          "Navigate to onboarding (step 4: Track Selection)"
+        ]
+      }
+    },
+    {
+      "id": "FEAT-002",
+      "priority": "P0",
+      "name": "API Key Onboarding Wizard",
+      "user_story": "As a non-technical user who has never used an API, I want a step-by-step guide to set up my Anthropic API key so that I don't feel lost or scared by developer consoles.",
+      "acceptance_criteria": [
+        "Given the app starts, When a profile loads, Then the app checks for a global API key at Electron userData directory (app.getPath('userData'))/.api_key and attempts to decrypt it via Electron safeStorage",
+        "Given no decryptable API key is found, When the onboarding wizard starts, Then Step 1 displays: 'You'll need an Anthropic account. This costs about $2-8/month for heavy use. Click Next to continue.'",
+        "Given Step 1 is completed, When the user clicks Next, Then Step 2 opens a browser window to https://console.anthropic.com/settings/keys with a screenshot overlay showing 'Click Create Key'",
+        "Given Step 2 is completed, When the user returns to the app, Then Step 3 shows a text input with placeholder 'sk-ant-...' and a 'Test Connection' button",
+        "Given an API key is pasted, When the user clicks 'Test Connection', Then the app makes a test request to Anthropic's API (/v1/messages with max_tokens=1)",
+        "Given the test succeeds, When the wizard completes, Then the API key is encrypted via Electron safeStorage and written as an encrypted blob to Electron userData directory (app.getPath('userData'))/.api_key (global, applies to all profiles)"
+      ],
+      "negative_constraints": [
+        "Do NOT store the API key in plaintext (must use Electron's safeStorage API)",
+        "Do NOT allow the wizard to be skipped (blocks all AI features without a valid key)",
+        "Do NOT validate the key by making a full AI request (waste of tokens; use a minimal test)"
+      ],
+      "dependencies": [
+        "FEAT-001"
+      ],
+      "ui_specification": {
+        "screen_name": "Settings",
+        "url": "/settings",
+        "purpose": "Manage account, preferences, API key",
+        "tabs": [
+          {
+            "name": "Account",
+            "sections": [
+              "Profile (Name, Avatar, Created date)",
+              "API Connection (Status, Key, Test, Rate limit)",
+              "Data Management (Storage, Export, Clear cache)",
+              "Danger Zone (Delete Profile)"
+            ]
+          },
+          {
+            "name": "Learning",
+            "sections": [
+              "Current Track (Change Track)",
+              "Teaching Method (Try First, Example First, Guided)",
+              "Session Preferences (Default length, Timer, Auto-save, Shortcuts)",
+              "Review Settings (Max per session, Email notifications)"
+            ]
+          },
+          {
+            "name": "Preferences",
+            "sections": [
+              "Appearance (Theme, Code editor theme, Font size)",
+              "Notifications (Desktop, Reviews, Streak, Weekly summary)",
+              "Advanced (Experimental features, Analytics, Auto-run, Chat behavior)"
+            ]
+          },
+          {
+            "name": "Privacy",
+            "sections": [
+              "Data Collection (Usage stats, Error reports, Performance metrics)",
+              "API Key Security (Encryption details, Security audit)",
+              "Your Rights (Export data, Request deletion, Privacy policy)"
+            ]
+          },
+          {
+            "name": "About",
+            "sections": [
+              "Avaia Info (Version, Build, Description)",
+              "Resources (Docs, Bug reports, Feature requests, Discord)",
+              "Credits (Built with, Open source licenses)",
+              "Updates (Check for updates, Auto-update settings)"
+            ]
+          }
+        ],
+        "visual_design": {
+          "sidebar": {
+            "width": "220px",
+            "background": "#F9FAFB",
+            "active_tab": "#3B82F6 left border (4px), #EFF6FF background"
+          },
+          "content": {
+            "padding": "32px",
+            "max_width": "800px",
+            "section_spacing": "32px"
+          },
+          "toggle_switches": {
+            "track_off": "#E5E7EB",
+            "track_on": "#3B82F6",
+            "knob": "White, 24px diameter",
+            "transition": "0.2s"
+          },
+          "danger_zone": {
+            "border": "2px solid #EF4444",
+            "background": "#FEF2F2",
+            "button": "Red background"
+          }
+        },
+        "modals": {
+          "edit_api_key": {
+            "title": "Update API Key",
+            "fields": [
+              "API key input",
+              "Link to Anthropic"
+            ],
+            "warning": "This will update the API key for ALL profiles",
+            "actions": [
+              "Cancel",
+              "Test & Save"
+            ]
+          },
+          "delete_profile": {
+            "title": "⚠️ Delete Profile?",
+            "confirmation": "Type 'DELETE' to confirm",
+            "lists": [
+              "Profile name",
+              "Projects completed",
+              "Concepts learned",
+              "Time invested"
+            ],
+            "actions": [
+              "Cancel",
+              "Delete Profile"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "FEAT-003",
+      "priority": "P0",
+      "name": "Curriculum Update Engine",
+      "user_story": "As the curriculum designer, I want to push new projects and lessons without asking users to update their app so that I can fix typos and add content instantly.",
+      "acceptance_criteria": [
+        "Given the app starts, When the splash screen loads, Then the app fetches a manifest JSON (e.g., https://raw.githubusercontent.com/{org}/avaia-curriculum/main/curriculum.manifest.json)",
+        "Given the manifest is valid JSON, When it contains {version, sha256, size, signature, url}, Then the app compares version/sha256 to the locally cached manifest in Electron userData directory (app.getPath('userData'))/curriculum_cache.json",
+        "Given the manifest indicates a newer curriculum, When the comparison completes, Then the app downloads curriculum.db from manifest.url",
+        "Given curriculum.db is downloaded, When verification runs, Then the app verifies sha256 (and signature, using an embedded public key) before using the file",
+        "Given verification succeeds, When the download completes, Then the app performs an atomic swap: write to a temp file and rename into place as (app.getPath('userData'))/curriculum.db, then updates curriculum_cache.json with the new manifest",
+        "Given the cache is updated, When the Dashboard loads, Then the app reads available tracks from curriculum.db (per the curriculum schema) and displays them (e.g., 'JavaScript/Web', 'TypeScript Fundamentals')",
+        "Given the network is unavailable, When the fetch fails, Then the app falls back to the last verified local curriculum.db (offline grace period)",
+        "Curriculum updates MUST be backwards-compatible with existing learner progress: concept IDs are never deleted or reused.",
+        "If curriculum content is removed or replaced, it MUST be marked deprecated (e.g., deprecated_at/is_deprecated) rather than deleted, so progress references remain valid.",
+        "On update, the app MUST run a compatibility check that flags any missing concept IDs referenced in progress.db and surfaces them as 'Legacy' (read-only) rather than crashing."
+      ],
+      "negative_constraints": [
+        "Do NOT block app startup if curriculum fetch fails (use stale cache)",
+        "Do NOT trust unsigned curriculum files (validate the manifest schema via Zod; verify curriculum.db hash/signature before atomic swap)",
+        "Do NOT download curriculum on every session (cache for 1 hour, check version only)"
+      ],
+      "dependencies": []
+    },
+    {
+      "id": "FEAT-004",
+      "priority": "P0",
+      "name": "Session Lifecycle Manager",
+      "user_story": "As a learner, I want my coding session to follow a structured flow (Check-in -> Build -> Verify -> Reflect) so that I stay focused and make measurable progress.",
+      "acceptance_criteria": [
+        "Given a learner clicks 'Start Session' on the Dashboard, When the session begins, Then Phase 1 (Check-in) starts with the AI asking 'What are you working on today? (2 min max)'",
+        "Given the learner responds to Check-in, When FSRS reviews are due (checked via get_due_reviews tool), Then Phase 2 (Review) triggers before Build phase",
+        "Given no reviews are due, When Check-in completes, Then Phase 3 (Build) starts with the AI retrieving the current project milestone",
+        "Given the learner hits a blocker (e.g., 'I don't understand async/await'), When they articulate the confusion, Then Phase 4 (Concept Teaching) triggers via introduce_concept tool",
+        "Given a concept is taught, When the AI finishes explaining, Then Phase 5 (Verification) presents a diagnostic question via get_diagnostic_question tool",
+        "Given the session timer reaches planned_duration_minutes, When the learner completes the current milestone, Then Phase 6 (Reflection) asks 'What did you learn today? What's still unclear?'",
+        "Given Reflection completes, When the learner clicks 'End Session', Then the session is logged to SQLite with session_notes (AI-generated summary for continuity)"
+      ],
+      "negative_constraints": [
+        "Do NOT allow learners to skip Review phase if concepts are due (retention priority)",
+        "Do NOT proceed to Verification without introduce_concept being called first (tracking integrity)",
+        "Do NOT end session without session_notes (breaks continuity for next session)"
+      ],
+      "dependencies": [
+        "FEAT-002",
+        "FEAT-003"
+      ],
+      "mcp_tools": [
+        {
+          "tool_name": "start_session",
+          "when_to_call": "User clicks 'Start Session' button or launches app",
+          "typescript": "start_session(params: {profile_id: string, planned_duration_minutes?: number}): Promise<{session_id: string, phase: 'check_in', due_reviews_count: number}>",
+          "zod_schema": "z.object({ profile_id: z.string().regex(/^profile_[a-f0-9]{32}$/), planned_duration_minutes: z.number().int().min(15).max(180).optional().default(60) })",
+          "database": [
+            "INSERT INTO session (id, profile_id, start_time, planned_duration_minutes) VALUES (?, ?, datetime('now'), ?)",
+            "UPDATE profile SET last_used_at = datetime('now') WHERE id = ?"
+          ],
+          "returns": {
+            "session_id": "UUID string",
+            "phase": "Always 'check_in'",
+            "due_reviews_count": "From get_due_reviews query",
+            "current_project": "Project object or null"
+          },
+          "errors": [
+            "profile_id not found",
+            "active session exists (must end first)"
+          ]
+        },
+        {
+          "tool_name": "end_session",
+          "when_to_call": "User clicks 'End Session' after completing exit ticket",
+          "typescript": "end_session(params: {session_id: string, exit_ticket: {what_learned: string, still_unclear: string, concepts_confidence: Record<string, 1|2|3|4|5>}}): Promise<{success: boolean, session_summary: string}>",
+          "zod_schema": "z.object({ session_id: z.string().regex(/^session_[a-f0-9]{32}$/), exit_ticket: z.object({ what_learned: z.string().min(1), still_unclear: z.string(), concepts_confidence: z.record(z.string(), z.number().int().min(1).max(5)) }) })",
+          "database": [
+            "UPDATE session SET end_time = datetime('now'), actual_duration_minutes = CAST((julianday('now') - julianday(start_time)) * 1440 AS INTEGER), exit_ticket_completed = TRUE WHERE id = ?",
+            "UPDATE concept_mastery SET last_confidence = ? WHERE profile_id = ? AND concept_id = ?"
+          ],
+          "returns": {
+            "success": "boolean",
+            "session_summary": "AI-generated summary for continuity",
+            "time_spent_minutes": "Calculated duration",
+            "concepts_mastered": "concept_ids verified this session"
+          },
+          "ai_integration": "AI generates summary from session activity: concepts introduced, milestones completed, questions asked",
+          "errors": [
+            "session not found",
+            "session already ended",
+            "exit_ticket incomplete"
+          ]
+        },
+        {
+          "tool_name": "get_session_state",
+          "when_to_call": "AI needs current session context (called frequently)",
+          "typescript": "get_session_state(params: {session_id: string}): Promise<SessionState>",
+          "zod_schema": "z.object({ session_id: z.string().regex(/^session_[a-f0-9]{32}$/) })",
+          "database": [
+            "SELECT * FROM session WHERE id = ?",
+            "SELECT * FROM project WHERE id = (SELECT project_id FROM session WHERE id = ?)",
+            "SELECT concept_id FROM concept_memory WHERE profile_id = ? AND state IN ('learning', 're learning')"
+          ],
+          "returns": {
+            "session_id": "string",
+            "start_time": "ISO datetime",
+            "elapsed_minutes": "Calculated from start_time",
+            "phase": "'check_in' | 'review' | 'build' | 'reflect'",
+            "current_project": "Full project object",
+            "concepts_introduced_this_session": "concept_id[]",
+            "concepts_verified_this_session": "concept_id[]"
+          },
+          "caching": "Cache in renderer, invalidate on tool calls that modify session state",
+          "errors": [
+            "session not found"
+          ]
+        },
+        {
+          "tool_name": "introduce_concept",
+          "when_to_call": "After AI teaches a concept during JIT teaching",
+          "typescript": "introduce_concept(params: {profile_id: string, concept_id: string, session_id: string, project_id: string, code_snippet?: string}): Promise<{success: boolean, concept_id: string, state: string}>",
+          "zod_schema": "z.object({ profile_id: z.string().regex(/^profile_[a-f0-9]{32}$/), concept_id: z.string().min(1), session_id: z.string().regex(/^session_[a-f0-9]{32}$/), project_id: z.string().regex(/^proj_[a-f0-9]{32}$/), code_snippet: z.string().max(500).optional() })",
+          "database": [
+            "INSERT INTO concept_memory (profile_id, concept_id, state, stability, difficulty, introduced_at) VALUES (?, ?, 'new', 0, 5, datetime('now')) ON CONFLICT DO NOTHING",
+            "INSERT INTO concept_mastery (profile_id, concept_id, verified, independence_score) VALUES (?, ?, FALSE, 0) ON CONFLICT DO NOTHING",
+            "INSERT INTO concept_instance (profile_id, concept_id, project_id, code_snippet) VALUES (?, ?, ?, ?)",
+            "UPDATE session SET concepts_introduced = json_insert(concepts_introduced, '$[#]', ?) WHERE id = ?"
+          ],
+          "returns": {
+            "success": "boolean",
+            "concept_id": "string",
+            "state": "'new' or 'learning'",
+            "introduced_at": "ISO datetime",
+            "already_known": "boolean (idempotency check)"
+          },
+          "idempotent": true,
+          "errors": [
+            "concept_id not in curriculum",
+            "code_snippet > 500 chars"
+          ]
+        }
+      ],
+      "ui_specification": {
+        "screen_name": "Chat Interface (Main Learning Screen)",
+        "url": "/chat or /session/{session_id}",
+        "purpose": "Primary learning interface where AI teaching happens",
+        "layout": "\n┌──────────────────────────────────────────────────────────────┐\n│  ← Dashboard    ⏱️ 23 min    Todo App - Milestone 2         │\n├──────────────────────────────────────────────────────────────┤\n│  Chat Messages (50%)          │  Code Editor (50%)          │\n│  ┌──────────────────────────┐ │ ┌────────────────────────┐ │\n│  │ Avaia: Let's add delete  │ │ │ main.js                │ │\n│  │ You: In the <li>...      │ │ │ const todos = [];      │ │\n│  │ [Sandbox Challenge Card] │ │ │ function addTodo() {   │ │\n│  │ You: [typing...]         │ │ │   // your code         │ │\n│  └──────────────────────────┘ │ └────────────────────────┘ │\n│  Type your message... [→]     │ [Run Code] [Preview]       │\n└──────────────────────────────────────────────────────────────┘\n        ",
+        "components": [
+          "ChatPanel (MessageList, MessageInput)",
+          "CodeEditor (Monaco, FileTabBar, Console)",
+          "SessionHeader (Timer, Progress, Project)"
+        ],
+        "visual_design": {
+          "layout": "50/50 split pane, draggable divider, min 30% per panel",
+          "chat_panel": {
+            "background": "#FFFFFF",
+            "ai_messages": "#F3F4F6 background",
+            "user_messages": "#DBEAFE background",
+            "padding": "16px per message",
+            "gap": "12px"
+          },
+          "code_editor": {
+            "background": "#1E1E1E (VS Code dark)",
+            "font": "'Fira Code', 'Consolas', monospace",
+            "font_size": "14px",
+            "line_height": "1.5"
+          },
+          "header": {
+            "background": "#F9FAFB",
+            "border_bottom": "1px solid #E5E7EB",
+            "height": "64px",
+            "padding": "16px 24px"
+          }
+        },
+        "session_header": {
+          "timer_states": {
+            "green_0_45min": "Optimal",
+            "yellow_45_60min": "Getting long",
+            "orange_60_90min": "Take break soon",
+            "red_90plus": "Definitely take break"
+          },
+          "elements": [
+            "Back button (← Dashboard)",
+            "Session timer (updates every minute)",
+            "Project name + current milestone",
+            "Progress bar (concepts verified / total)",
+            "End Session button (primary, top-right)"
+          ]
+        },
+        "message_types": [
+          "AI Message (standard text)",
+          "User Message (right-aligned, blue background)",
+          "AI Message with Code Block (syntax highlighted)",
+          "Embedded Component (Sandbox, Review, MCQ)"
+        ],
+        "keyboard_shortcuts": {
+          "cmd_k": "Focus message input",
+          "cmd_e": "Toggle code editor focus",
+          "cmd_enter": "Run code",
+          "esc": "Close modals/panels"
+        }
+      }
+    },
+    {
+      "id": "FEAT-005",
+      "priority": "P0",
+      "name": "FSRS-5 Spaced Repetition Engine",
+      "user_story": "As a learner, I want the system to automatically schedule review sessions for concepts I learned days/weeks ago so that I don't forget what I studied.",
+      "acceptance_criteria": [
+        "Given a concept is introduced via introduce_concept, When the tool is called, Then a concept_memory record is created with state='new', stability=0, difficulty=0",
+        "Given a concept is verified via verify_concept, When is_correct=true, Then the FSRS-5 algorithm updates stability/difficulty and calculates next_review_date",
+        "Given a concept is due for review (next_review_date <= today), When get_due_reviews is called, Then the tool returns up to 5 concepts sorted by stability (lowest first, i.e., most fragile)",
+        "Given a review is presented, When the learner answers (correct/incorrect + confidence 1-5 + response_time_ms), Then log_review updates FSRS state and recalculates next_review_date",
+        "Given a concept is answered incorrectly with high confidence (confidence >= 4), When verify_concept is called, Then the concept is flagged as a 'stubborn_misconception' in concept_memory.concept_mastery.high_confidence_errors counter",
+        "Given a stubborn misconception is flagged, When the next session starts, Then the AI prioritizes remediation (contrasting cases) before introducing new content"
+      ],
+      "negative_constraints": [
+        "Do NOT allow skipping reviews (must complete or explicitly defer)",
+        "Do NOT use SuperMemo-2 or other algorithms (FSRS-5 is the specified standard)",
+        "Do NOT present more than 5 reviews per session (cognitive overload prevention)"
+      ],
+      "dependencies": [
+        "FEAT-004"
+      ],
+      "mcp_tools": [
+        {
+          "tool_name": "get_due_reviews",
+          "when_to_call": "Session Check-In phase (BEFORE building begins)",
+          "typescript": "get_due_reviews(params: {profile_id: string, limit?: number}): Promise<{reviews: Review[], total_due: number}>",
+          "zod_schema": "z.object({ profile_id: z.string().regex(/^profile_[a-f0-9]{32}$/), limit: z.number().int().min(1).max(20).optional().default(5) })",
+          "database": [
+            "SELECT cm.concept_id, cm.stability, cm.next_review_date, ci.code_snippet, ci.snippet_context FROM concept_memory cm LEFT JOIN concept_instance ci ON ci.concept_id = cm.concept_id AND ci.profile_id = cm.profile_id WHERE cm.profile_id = ? AND cm.state IN ('review', 'relearning') AND cm.next_review_date <= datetime('now') ORDER BY cm.stability ASC LIMIT ?"
+          ],
+          "returns": {
+            "reviews": "Array of {concept_id, concept_name, code_snippet, snippet_context, stability, next_review_date}",
+            "total_due": "Total concepts due (may be > limit)"
+          },
+          "ai_format": "For each review: 'Quick review: In your {project}, what does this code return? {snippet}'",
+          "limit_rationale": "Default 5 to prevent cognitive overload (pedagogical constraint)",
+          "errors": [
+            "profile_id not found"
+          ]
+        },
+        {
+          "tool_name": "log_review",
+          "when_to_call": "After learner answers a review question",
+          "typescript": "log_review(params: {profile_id: string, concept_id: string, session_id: string, rating: 'again'|'hard'|'good'|'easy', confidence: 1|2|3|4|5, response_time_ms: number}): Promise<FSRSUpdate>",
+          "zod_schema": "z.object({ profile_id: z.string().regex(/^profile_[a-f0-9]{32}$/), concept_id: z.string(), session_id: z.string().regex(/^session_[a-f0-9]{32}$/), rating: z.enum(['again', 'hard', 'good', 'easy']), confidence: z.number().int().min(1).max(5), response_time_ms: z.number().int().positive() })",
+          "database": [
+            "SELECT stability, difficulty, state, last_review_date, next_review_date, total_reviews, lapses FROM concept_memory WHERE profile_id = ? AND concept_id = ?",
+            "-- Run FSRS algorithm (ts-fsrs library) with current state + rating",
+            "UPDATE concept_memory SET state = ?, stability = ?, difficulty = ?, last_review_date = datetime('now'), next_review_date = ?, total_reviews = total_reviews + 1, lapses = ? WHERE profile_id = ? AND concept_id = ?",
+            "INSERT INTO review_log (profile_id, concept_id, session_id, rating, confidence, response_time_ms, stability_before, stability_after, difficulty_before, difficulty_after, next_review_date) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            "UPDATE session SET reviews_completed = reviews_completed + 1 WHERE id = ?"
+          ],
+          "returns": {
+            "success": "boolean",
+            "fsrs_updated": {
+              "stability_before": "number",
+              "stability_after": "number",
+              "difficulty_before": "number",
+              "difficulty_after": "number",
+              "next_review_date": "ISO datetime",
+              "state": "'learning' | 'review' | 'relearning'"
+            },
+            "reviews_completed_today": "number"
+          },
+          "fsrs_integration": "Use ts-fsrs library: const fsrs = new FSRS(); const result = fsrs.repeat(card, new Date()); Extract new state from result[rating].card",
+          "errors": [
+            "concept not found in memory",
+            "invalid FSRS state transition"
+          ]
+        }
+      ],
+      "ui_specification": {
+        "component_name": "Review Check-In UI",
+        "location": "Chat interface, appears after 'What are you working on today?'",
+        "purpose": "Present reviews at session start without disrupting flow",
+        "wireframes": {
+          "session_start": "\n┌─────────────────────────────────────────────────────────────┐\n│  Avaia: Hey! Before we start building, let's do a quick    │\n│  review of 3 concepts from past sessions. Should take      │\n│  under 60 seconds.                                          │\n│  ┌─────────────────────────────────────────────────────┐   │\n│  │  📚 Quick Review (3 concepts)                       │   │\n│  │  ● ○ ○   Progress: 0/3                              │   │\n│  │  These strengthen your memory—won't take long!      │   │\n│  └─────────────────────────────────────────────────────┘   │\n│  [Start Review]    [Defer (not recommended)]                 │\n└─────────────────────────────────────────────────────────────┘\n            ",
+          "during_review": "\n┌─────────────────────────────────────────────────────────────┐\n│  📚 Review: Array.map()                                     │\n│  ● ● ○   Review 2 of 3                                      │\n│  In your Todo App, what does this code return?             │\n│  const numbers = [1, 2, 3];                                 │\n│  const doubled = numbers.map(n => n * 2);                   │\n│  ○ A. [1, 2, 3]                                             │\n│  ○ B. [2, 4, 6]                                             │\n│  [Submit Answer]                                            │\n│  ⏱️ 12 seconds elapsed                                      │\n└─────────────────────────────────────────────────────────────┘\n            "
+        },
+        "components": [
+          "ReviewCheckIn",
+          "ReviewProgressDots",
+          "ReviewTimer"
+        ],
+        "visual_design": {
+          "banner": {
+            "background": "#DBEAFE (blue-50)",
+            "border": "2px solid #93C5FD",
+            "icon": "📚 (24px)",
+            "padding": "16px"
+          },
+          "timer": {
+            "color": "#6B7280",
+            "font_size": "14px",
+            "font_family": "monospace",
+            "updates": "every second"
+          }
+        },
+        "interaction_flow": [
+          "Session starts",
+          "MCP: get_due_reviews({ limit: 5 })",
+          "IF reviews.length > 0: Show ReviewCheckIn banner",
+          "User clicks Start Review",
+          "Display Review 1/N (MCQ with code snippet)",
+          "User answers + confidence slider",
+          "MCP: log_review()",
+          "Show next review until all done",
+          "Show completion summary",
+          "Transition to 'What are you working on?'"
+        ]
+      }
+    },
+    {
+      "id": "FEAT-005A",
+      "priority": "P0",
+      "name": "Token-Efficient Code Snippet Storage for Reviews",
+      "user_story": "As the system optimizing API costs, I must store code snippets (max 500 chars) when concepts are introduced so that reviews use snippets instead of full files, reducing token usage by 10x.",
+      "acceptance_criteria": [
+        "Given introduce_concept is called, When concept is being introduced, Then extract relevant code snippet from learner's current file (max 500 characters, ~20 lines)",
+        "Given snippet extracted, When stored, Then save to concept_instance table: {learner_id, concept_id, project_id, snippet_context, code_snippet, line_numbers, created_at}",
+        "Given snippet_context is stored, When recorded, Then format: '[Project Name], [Function/Component Name], lines [X-Y]'",
+        "Given snippet exceeds 500 chars, When extraction occurs, Then AI summarizes with comments: 'const handleClick = (e) => { /* validation logic */ /* state update */ }'",
+        "Given review is due (get_due_reviews called), When review question is generated, Then use stored snippet NOT full project file",
+        "Given review question presented, When displayed to learner, Then format: 'Quick review: In your [Project], [Function], what does this line return? [snippet]'"
+      ],
+      "negative_constraints": [
+        "Do NOT load full project files for reviews (defeats token efficiency)",
+        "Do NOT store snippets longer than 500 chars (maintain cost control)",
+        "Do NOT skip snippet storage (reviews will fail without it)"
+      ],
+      "cost_impact_analysis": {
+        "without_snippets": "Full file review: ~2000 tokens × 20 reviews/week = 40,000 tokens/week = $0.12/week = $6.24/year per learner",
+        "with_snippets": "Snippet review: ~200 tokens × 20 reviews/week = 4,000 tokens/week = $0.012/week = $0.62/year per learner",
+        "savings": "10x cost reduction on spaced repetition overhead"
+      },
+      "dependencies": [
+        "FEAT-005",
+        "FEAT-004"
+      ]
+    },
+    {
+      "id": "FEAT-006",
+      "priority": "P0",
+      "name": "Diagnostic Question System",
+      "user_story": "As a learner, I want to verify my understanding through code prediction questions that reveal my misconceptions so that I fix mental model bugs early.",
+      "acceptance_criteria": [
+        "Given a concept is taught, When the AI calls get_diagnostic_question, Then the tool returns a multiple-choice question with 4 options (1 correct, 3 distractors)",
+        "Tool input validation MUST accept optional question_type enum: 'application' | 'discrimination' (do not reject at the API boundary).",
+        "Given a diagnostic question is presented, When the learner selects an answer, Then the app logs the selection + confidence (1-5) + response_time_ms",
+        "Given the learner selects a distractor, When the answer is mapped to a misconception_id, Then verify_concept is called with is_correct=false and misconception_id",
+        "Given a misconception is detected, When verify_concept returns stubborn_bug_flagged=true, Then the AI presents a contrasting case (two code snippets with minimal differences)",
+        "Given the question uses learner's own code, When available, Then the code_snippet field contains actual code from their current project (not generic examples)",
+        "Layer 3 (Discrimination) MUST request a discrimination-type diagnostic (e.g., 'map vs forEach') using the same tool with a question_type filter."
+      ],
+      "negative_constraints": [
+        "Do NOT present diagnostic questions before the concept is taught (violates just-in-time pedagogy)",
+        "Do NOT reuse the same question within 7 days (learner may memorize answer without understanding)",
+        "Do NOT allow AI to give hints during diagnostic questions (defeats the purpose of verification)"
+      ],
+      "dependencies": [
+        "FEAT-005"
+      ],
+      "mcp_tools": [
+        {
+          "tool_name": "get_diagnostic_question",
+          "when_to_call": "Verification Layer 2 (Application) - after articulation",
+          "typescript": "get_diagnostic_question(params: {concept_id: string, profile_id: string, question_type?: 'application' | 'discrimination'}): Promise<DiagnosticQuestion>",
+          "zod_schema": "z.object({concept_id: z.string(), profile_id: z.string().regex(/^profile_[a-f0-9]{32}$/), question_type: z.enum(['application','discrimination']).optional() })",
+          "database": [
+            "SELECT dq.id, dq.code_snippet, dq.prompt, dq.correct_answer, dq.distractors FROM diagnostic_question dq WHERE dq.concept_id = ? AND dq.id NOT IN (SELECT diagnostic_question_id FROM review_log WHERE profile_id = ? AND date(timestamp) > date('now', '-7 days')) AND question_type = COALESCE(?, 'application') ORDER BY RANDOM() LIMIT 1"
+          ],
+          "returns": {
+            "question_id": "string",
+            "code_snippet": "string (if applicable)",
+            "prompt": "string",
+            "options": "Array of {answer: string, is_correct: boolean, misconception_id?: string}",
+            "difficulty": "1-3"
+          },
+          "ui_format": "Present as MCQ with code block (if snippet present) + 4 options (A/B/C/D)",
+          "deduplication": "Exclude questions answered in last 7 days to prevent memorization",
+          "errors": [
+            "no diagnostic questions for concept",
+            "all questions recently used"
+          ],
+          "parameters": {
+            "question_type": {
+              "type": "string",
+              "enum": [
+                "application",
+                "discrimination"
+              ],
+              "required": false,
+              "default": "application",
+              "description": "Filters diagnostic questions by intent: application (Layer 2) or discrimination (Layer 3)."
+            }
+          }
+        },
+        {
+          "tool_name": "verify_concept",
+          "when_to_call": "After 3-layer verification protocol completes",
+          "typescript": "verify_concept(params: {profile_id: string, concept_id: string, session_id: string, layer1_quality: 'none'|'partial'|'complete', layer2_correct: boolean, layer2_confidence: 1|2|3|4|5, layer2_misconception_id?: string, layer3_correct: boolean}): Promise<VerificationResult>",
+          "zod_schema": "z.object({ profile_id: z.string().regex(/^profile_[a-f0-9]{32}$/), concept_id: z.string(), session_id: z.string().regex(/^session_[a-f0-9]{32}$/), layer1_quality: z.enum(['none', 'partial', 'complete']), layer2_correct: z.boolean(), layer2_confidence: z.number().int().min(1).max(5), layer2_misconception_id: z.string().optional(), layer3_correct: z.boolean() })",
+          "database": [
+            "SELECT cm.state, ma.verified, ma.high_confidence_errors FROM concept_memory cm JOIN concept_mastery ma ON ma.profile_id = cm.profile_id AND ma.concept_id = cm.concept_id WHERE cm.profile_id = ? AND cm.concept_id = ?",
+            "-- Detect stubborn misconception: layer2_confidence >= 4 AND !layer2_correct",
+            "UPDATE concept_mastery SET high_confidence_errors = high_confidence_errors + 1 WHERE profile_id = ? AND concept_id = ?",
+            "UPDATE concept_mastery SET verification_attempts = verification_attempts + 1, verified = ?, verified_at = CASE WHEN ? THEN datetime('now') ELSE verified_at END, total_attempts = total_attempts + 1, correct_attempts = correct_attempts + CASE WHEN ? THEN 1 ELSE 0 END, last_confidence = ? WHERE profile_id = ? AND concept_id = ?",
+            "UPDATE concept_memory SET state = 'learning' WHERE profile_id = ? AND concept_id = ? AND state = 'new'",
+            "UPDATE session SET concepts_verified = json_insert(concepts_verified, '$[#]', ?) WHERE id = ?"
+          ],
+          "returns": {
+            "success": "boolean",
+            "verified": "boolean (all 3 layers passed)",
+            "state_transition": "string (e.g., 'new → learning')",
+            "stubborn_misconception_detected": "boolean",
+            "next_action": "'advance' | 'remediate' | 'hypercorrection'"
+          },
+          "three_layer_validation": {
+            "layer1_articulation": "AI judges quality based on: uses own words, mentions use case",
+            "layer2_application": "MCQ with misconception-mapped distractors",
+            "layer3_discrimination": "Choose correct tool for context (e.g., 'Use map or forEach?')"
+          },
+          "all_layers_passed_condition": "layer1_quality == 'complete' AND layer2_correct AND layer3_correct",
+          "errors": [
+            "concept not introduced yet",
+            "session not active"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "FEAT-006A",
+      "priority": "P0",
+      "name": "Three-Layer Verification Protocol",
+      "user_story": "As the pedagogical system, I must ensure concepts are verified through 3 distinct layers (Articulation → Application → Discrimination) because open-ended questions alone allow learners to parrot definitions without understanding.",
+      "acceptance_criteria": [
+        "Given concept is introduced, When verification begins, Then Layer 1 (Articulation) is presented: 'Explain [concept] in your own words'",
+        "Given Layer 1 response received, When AI analyzes explanation, Then check for parroting (definition without understanding implications)",
+        "Given Layer 1 passed OR articulation reveals gaps, When Layer 2 begins, Then present diagnostic MCQ with misconception-mapped distractors",
+        "Given Layer 2 answer submitted with confidence, When answer is correct, Then proceed to Layer 3",
+        "Given Layer 3 begins, When discrimination question presented, Then format: 'You need to [task]. Use [concept A] or [concept B]?'",
+        "Given all 3 layers passed, When verification concludes, Then concept state changes: LEARNING → REVIEW",
+        "Given ANY layer failed, When verification concludes, Then concept remains in LEARNING state and remediation required"
+      ],
+      "negative_constraints": [
+        "Do NOT allow concept to move to REVIEW state without passing all 3 layers",
+        "Do NOT skip layers even if learner appears confident",
+        "Do NOT accept parroted definitions (e.g., 'DOM is Document Object Model') without follow-up about implications"
+      ],
+      "layer_specifications": {
+        "layer_1_articulation": "Open-ended: 'Explain X in own words'. Pass if: (1) uses own words not memorized definition, (2) mentions use case or implication",
+        "layer_2_application": "Diagnostic MCQ: Code prediction with 4 options. Pass if: correct answer selected",
+        "layer_3_discrimination": "Comparative: 'Given [context], use X or Y?' Pass if: correct tool selected AND can explain why"
+      },
+      "dependencies": [
+        "FEAT-006"
+      ]
+    },
+    {
+      "id": "FEAT-006B",
+      "priority": "P0",
+      "name": "Confidence Tracking & Hypercorrection UI",
+      "user_story": "As the system, I must log confidence with every diagnostic answer because high-confidence errors (hypercorrection effect) are the strongest learning opportunities and require immediate intervention.",
+      "acceptance_criteria": [
+        "Given diagnostic question (Layer 2) is presented, When learner selects answer, Then UI displays confidence prompt: 'How confident are you? 1=Guessing, 2=Unsure, 3=Probably, 4=Confident, 5=Certain'",
+        "Given confidence selected, When answer is submitted, Then log to review_log: {profile_id, concept_id, session_id?, review_type='remediation', is_correct, confidence, timestamp}",
+        "Given confidence >= 4 AND is_correct == false, When logged, Then increment concept_mastery.high_confidence_errors and persist last_confidence",
+        "Given stubborn_misconception flagged, When flag is set, Then IMMEDIATELY present contrasting case (do not continue with other content)",
+        "Given contrasting case presented, When learner studies it, Then ask: 'What's the minimal difference between these two snippets?'",
+        "Given learner explains difference, When explanation is correct, Then re-verify concept (present new diagnostic question)",
+        "Given stubborn bug persists after 3 remediations, When 3rd failure occurs, Then escalate: 'This concept needs deeper review. I'll prioritize it in your next session.'"
+      ],
+      "negative_constraints": [
+        "Do NOT allow diagnostic questions without confidence logging (defeats hypercorrection)",
+        "Do NOT delay contrasting case presentation (must be IMMEDIATE)",
+        "Do NOT allow progression if stubborn misconception is active"
+      ],
+      "contrasting_case_requirements": {
+        "format": "Two code snippets side-by-side, highlighted difference (1-2 lines max)",
+        "example": "Case A: arr.map() returns new array | Case B: arr.forEach() returns undefined",
+        "source": "Use learner's own code when possible, generic examples as fallback"
+      },
+      "dependencies": [
+        "FEAT-006",
+        "FEAT-006A"
+      ],
+      "ui_specification": {
+        "component_name": "Confidence Slider",
+        "location": "Chat interface, immediately after MCQ answer submission",
+        "purpose": "Capture learner's confidence to detect stubborn misconceptions",
+        "wireframes": {
+          "slider_view": "\n┌─────────────────────────────────────────────────────────────┐\n│  How confident are you in this answer?                      │\n│                                                             │\n│  ┌─────────────────────────────────────────────────────┐   │\n│  │  1           2           3           4           5   │   │\n│  │  Guessing    Unsure     Somewhat    Pretty      100%│   │\n│  │                         sure        sure       certain│   │\n│  │  ○──────────○──────────●──────────○──────────○     │   │\n│  │                        ▲ Selected: 3                 │   │\n│  └─────────────────────────────────────────────────────┘   │\n│  [Confirm Confidence →]                                     │\n└─────────────────────────────────────────────────────────────┘\n            "
+        },
+        "components": [
+          "ConfidenceSlider"
+        ],
+        "visual_design": {
+          "slider_track": {
+            "background": "#E5E7EB",
+            "active_segment": "#3B82F6",
+            "height": "4px",
+            "border_radius": "2px"
+          },
+          "slider_dots": {
+            "unselected": "#D1D5DB",
+            "selected": "#3B82F6",
+            "hover": "#2563EB with scale 1.2",
+            "size": "16px",
+            "border": "2px solid white"
+          },
+          "labels": {
+            "font_size": "14px",
+            "color": "#6B7280",
+            "selected_color": "#1F2937 + font-semibold"
+          }
+        },
+        "interaction_flow": [
+          "User selects MCQ answer",
+          "User clicks Submit Answer",
+          "Show Confidence Slider (default: 3)",
+          "User drags or clicks level",
+          "User clicks Confirm Confidence",
+          "MCP: verify_concept({ confidence: X })",
+          "IF confidence >= 4 AND wrong → Hypercorrection"
+        ],
+        "accessibility": {
+          "keyboard": [
+            "Left/Right arrows to move",
+            "Tab to focus",
+            "Enter to confirm"
+          ],
+          "aria": "role=slider, aria-valuenow=3, aria-label='Confidence level: 3 out of 5'",
+          "screen_reader": "Announces confidence level on change"
+        }
+      }
+    },
+    {
+      "id": "FEAT-007",
+      "priority": "P0",
+      "name": "Project & Milestone Tracker",
+      "user_story": "As a learner, I want to see my progress through milestones (e.g., 'Build login form', 'Add validation') so that I feel momentum and know what's next.",
+      "acceptance_criteria": [
+        "Given a learner selects a track (e.g., 'JavaScript/Web'), When they start the first project, Then the app creates a Project record with status='in_progress' and current_milestone=0",
+        "Given a project is in progress, When the Dashboard loads, Then the UI shows: Project name, current milestone name, progress bar (milestones_completed / total_milestones)",
+        "Given a milestone is completed, When the AI calls advance_milestone, Then current_milestone increments and the milestone is added to milestones_completed JSON array",
+        "Given all milestones are completed, When advance_milestone is called for the final milestone, Then the project status changes to 'completed' and completed_at timestamp is set",
+        "Given a project is completed, When the Dashboard loads, Then the next project in the track is automatically unlocked and displayed as 'Start Next Project'"
+      ],
+      "negative_constraints": [
+        "Do NOT allow skipping milestones (must complete sequentially)",
+        "Do NOT allow starting a new project while one is 'in_progress' (focus enforcement)",
+        "Do NOT delete completed projects (historical record for portfolio/resume)"
+      ],
+      "dependencies": [
+        "FEAT-003",
+        "FEAT-004"
+      ],
+      "mcp_tools": [
+        {
+          "tool_name": "get_current_project",
+          "when_to_call": "Session Check-In or when AI needs project context",
+          "typescript": "get_current_project(params: {profile_id: string}): Promise<Project | null>",
+          "zod_schema": "z.object({ profile_id: z.string().regex(/^profile_[a-f0-9]{32}$/) })",
+          "database": [
+            "SELECT p.*, pt.name as template_name, pt.description FROM project p JOIN project_template pt ON pt.id = p.template_id WHERE p.profile_id = ? AND p.status = 'in_progress' LIMIT 1",
+            "SELECT mt.name, mt.description, mt.sequence_order FROM milestone_template mt WHERE mt.project_template_id = (SELECT template_id FROM project WHERE id = ?) ORDER BY mt.sequence_order"
+          ],
+          "returns": {
+            "project": {
+              "id": "string",
+              "name": "string",
+              "status": "'in_progress'",
+              "current_milestone": "number",
+              "milestones": "Array of {name, description, sequence_order, completed: boolean}",
+              "time_spent_minutes": "number",
+              "started_at": "ISO datetime"
+            }
+          },
+          "returns_null_if": "No in_progress projects (learner needs to choose one)",
+          "errors": [
+            "profile_id not found"
+          ]
+        },
+        {
+          "tool_name": "advance_milestone",
+          "when_to_call": "After all concepts in milestone are verified",
+          "typescript": "advance_milestone(params: {profile_id: string, project_id: string, session_id: string}): Promise<{success: boolean, next_milestone: number}>",
+          "zod_schema": "z.object({ profile_id: z.string().regex(/^profile_[a-f0-9]{32}$/), project_id: z.string().regex(/^proj_[a-f0-9]{32}$/), session_id: z.string().regex(/^session_[a-f0-9]{32}$/) })",
+          "prerequisite_check": [
+            "SELECT concept_id FROM milestone_concept mc WHERE mc.milestone_id = (SELECT current_milestone FROM project WHERE id = ?) AND mc.is_required = TRUE AND NOT EXISTS (SELECT 1 FROM concept_mastery ma WHERE ma.concept_id = mc.concept_id AND ma.profile_id = ? AND ma.verified = TRUE)",
+            "IF unverified_concepts.length > 0: THROW ERROR 'Cannot advance: Concepts not verified: {concept_ids}'"
+          ],
+          "database": [
+            "UPDATE project SET current_milestone = current_milestone + 1, milestones_completed = json_insert(milestones_completed, '$[#]', current_milestone) WHERE id = ? AND profile_id = ?",
+            "UPDATE session SET milestones_advanced = milestones_advanced + 1 WHERE id = ?"
+          ],
+          "returns": {
+            "success": "boolean",
+            "next_milestone": "number",
+            "project_complete": "boolean (if last milestone)"
+          },
+          "state_machine_enforcement": "CRITICAL: Cannot call without verify_concept for all milestone concepts",
+          "errors": [
+            "unverified concepts",
+            "project not found",
+            "already on last milestone"
+          ]
+        },
+        {
+          "tool_name": "update_project_time",
+          "when_to_call": "Periodically during session (every 5 min) or on session end",
+          "typescript": "update_project_time(params: {project_id: string, additional_minutes: number}): Promise<{success: boolean, total_time: number}>",
+          "zod_schema": "z.object({ project_id: z.string().regex(/^proj_[a-f0-9]{32}$/), additional_minutes: z.number().int().positive() })",
+          "database": [
+            "UPDATE project SET time_spent_minutes = time_spent_minutes + ? WHERE id = ?"
+          ],
+          "returns": {
+            "success": "boolean",
+            "total_time": "number (cumulative across all sessions)"
+          },
+          "auto_tracking": "Renderer process tracks active project time, calls this tool every 5 min",
+          "errors": [
+            "project_id not found"
+          ]
+        }
+      ],
+      "ui_specification": {
+        "screen_name": "Dashboard (Home Screen)",
+        "url": "/dashboard or /",
+        "purpose": "Overview of progress, start sessions, see stats",
+        "layout": "\n┌──────────────────────────────────────────────────────────────┐\n│  Avaia    [Profile: Daramola ▼]  [Settings ⚙️]               │\n├──────────────────────────────────────────────────────────────┤\n│  Good evening, Daramola! 👋                                  │\n│  ┌────────────────────────────────────────────────────────┐ │\n│  │  Current Project: Todo App                             │ │\n│  │  Progress: Milestone 2 of 6    ▓▓▓░░░░░░░  33%        │ │\n│  │  Last session: 2 hours ago (45 min)                    │ │\n│  │  [Continue Building →]                                 │ │\n│  └────────────────────────────────────────────────────────┘ │\n│  ┌──────────────────┐  ┌──────────────────┐               │\n│  │ 📚 Reviews Due   │  │ 🎯 Streak        │               │\n│  │ 3 concepts       │  │ 7 days 🔥🔥🔥🔥🔥🔥🔥 │               │\n│  │ [Review Now]     │  │                  │               │\n│  └──────────────────┘  └──────────────────┘               │\n│  Learning Track: JavaScript/Web Development                │\n│  ✓ Memory Game    ● Todo App (33%)    ○ Weather App       │\n│  [Browse All Tracks]                                       │\n└──────────────────────────────────────────────────────────────┘\n        ",
+        "components": [
+          "DashboardHeader",
+          "GreetingSection",
+          "CurrentProjectCard",
+          "StatsGrid (ReviewsCard, StreakCard)",
+          "LearningTrackProgress",
+          "RecentActivity"
+        ],
+        "visual_design": {
+          "layout": "Max width 1200px, centered, 24px padding, 12-column grid",
+          "cards": {
+            "background": "#FFFFFF",
+            "border": "1px solid #E5E7EB",
+            "border_radius": "12px",
+            "shadow": "0 1px 3px rgba(0,0,0,0.1)",
+            "padding": "24px",
+            "hover": "0 4px 12px rgba(0,0,0,0.1)"
+          },
+          "progress_bars": {
+            "height": "8px",
+            "background": "#E5E7EB",
+            "fill": "#3B82F6",
+            "border_radius": "4px",
+            "animation": "0.3s ease"
+          }
+        },
+        "current_project_card": {
+          "sections": [
+            "Project name + status",
+            "Progress: Milestone X of Y (concepts verified)",
+            "Next Up: Checklist of upcoming milestones",
+            "Last session: Time ago + duration",
+            "Time invested: Total time",
+            "Estimated to complete: Remaining hours"
+          ],
+          "actions": [
+            "Continue Building",
+            "Change Project"
+          ]
+        },
+        "reviews_card_states": {
+          "0_reviews": "✓ All caught up! Next review in 3 days",
+          "1_3_reviews": "Green, normal",
+          "4_7_reviews": "Yellow, 'Catching up needed'",
+          "8plus_reviews": "Red, '⚠️ Review backlog'"
+        }
+      }
+    },
+    {
+      "id": "FEAT-008",
+      "priority": "P0",
+      "name": "Learning Preferences Auto-Detection",
+      "user_story": "As a learner, I want the AI to adapt to my learning style (e.g., physical analogies, visual diagrams) without me configuring settings so that teaching feels personalized.",
+      "acceptance_criteria": [
+        "Given a session is in progress, When the AI notices the learner responds well to physical analogies (e.g., 'closures are like backpacks'), Then update_learning_preferences is called with prefers_physical_analogies=true",
+        "Given a learner asks 'why' questions frequently (>2 per session), When the pattern is detected, Then needs_emotional_context=true is set",
+        "Given a learner goes on tangents (messages unrelated to current milestone), When detected via log_learner_question, Then tangent_prone=true is flagged",
+        "Given learning preferences are updated, When the next session starts, Then the AI reads preferences from the learner record and adjusts teaching style accordingly"
+      ],
+      "negative_constraints": [
+        "Do NOT require manual configuration (auto-detection only)",
+        "Do NOT expose preferences to the learner (they may game the system)",
+        "Do NOT update preferences more than once per session (avoid oscillation)"
+      ],
+      "dependencies": [
+        "FEAT-004"
+      ]
+    },
+    {
+      "id": "FEAT-009",
+      "priority": "P1",
+      "name": "Productive Failure Sandbox System",
+      "user_story": "As a learner, I want to struggle with a challenging problem before being taught the solution so that I understand why the concept exists (not just how to use it).",
+      "acceptance_criteria": [
+        "Given a concept has a sandbox (e.g., 'Build a timer without setInterval'), When the concept is about to be introduced, Then trigger_sandbox is called first",
+        "Given a sandbox is triggered, When the AI presents the problem, Then the learner must make at least min_attempts tries (default 2)",
+        "Given the learner submits code, When evaluate_sandbox_attempt is called, Then the tool matches failure patterns (e.g., 'used setTimeout recursion correctly but forgot base case')",
+        "Given min_attempts are completed, When the learner articulates what they tried and why it failed, Then the AI transitions to teaching with: 'You discovered the core issue. Here's why setInterval exists...'",
+        "Given the sandbox phase ends, When teaching begins, Then introduce_concept is called to track that the concept was taught"
+      ],
+      "negative_constraints": [
+        "Do NOT help the learner succeed during sandbox (defeats productive failure pedagogy)",
+        "Do NOT skip sandbox if one exists for the concept (research-backed requirement)",
+        "Do NOT require more than 3 attempts (too much frustration)"
+      ],
+      "dependencies": [
+        "FEAT-004",
+        "FEAT-005"
+      ],
+      "mcp_tools": [
+        {
+          "tool_name": "trigger_sandbox",
+          "when_to_call": "BEFORE teaching a concept with complexity >= 3",
+          "typescript": "trigger_sandbox(params: {profile_id: string, concept_id: string, session_id: string}): Promise<{sandbox_id: string, problem_statement: string, min_attempts: number}>",
+          "zod_schema": "z.object({ profile_id: z.string().regex(/^profile_[a-f0-9]{32}$/), concept_id: z.string(), session_id: z.string().regex(/^session_[a-f0-9]{32}$/) })",
+          "database": [
+            "SELECT s.id, s.problem_statement, s.setup_code, s.expected_failures, s.min_attempts, s.reflection_questions FROM sandbox s JOIN concept c ON c.sandbox_id = s.id WHERE c.id = ?"
+          ],
+          "returns": {
+            "sandbox_id": "string",
+            "problem_statement": "string (e.g., 'Build a countdown timer without setInterval')",
+            "setup_code": "string (optional starter code)",
+            "min_attempts": "number (default 2)",
+            "expected_failures": "Array of {pattern_id, recognition_criteria}"
+          },
+          "temporal_ordering": "CRITICAL: Must be called BEFORE introduce_concept if concept.sandbox_id exists",
+          "ai_instructions": "Present problem. Do NOT give hints. Let learner struggle for min_attempts.",
+          "errors": [
+            "concept has no sandbox",
+            "sandbox_id not found in curriculum"
+          ]
+        },
+        {
+          "tool_name": "evaluate_sandbox_attempt",
+          "when_to_call": "After learner submits code during sandbox phase",
+          "typescript": "evaluate_sandbox_attempt(params: {profile_id: string, sandbox_id: string, session_id: string, attempt_number: number, code_submitted: string, approach_description: string}): Promise<{matched_pattern?: string, should_teach: boolean}>",
+          "zod_schema": "z.object({ profile_id: z.string().regex(/^profile_[a-f0-9]{32}$/), sandbox_id: z.string(), session_id: z.string().regex(/^session_[a-f0-9]{32}$/), attempt_number: z.number().int().positive(), code_submitted: z.string(), approach_description: z.string() })",
+          "database": [
+            "INSERT INTO sandbox_attempt (sandbox_id, profile_id, session_id, attempt_number, code_submitted, approach_description, timestamp) VALUES (?, ?, ?, ?, ?, ?, datetime('now'))",
+            "SELECT expected_failures FROM sandbox WHERE id = ?",
+            "-- AI analyzes code_submitted against expected_failure patterns",
+            "UPDATE sandbox_attempt SET matched_failure_pattern = ?, outcome = ?, articulation_quality = ? WHERE id = last_insert_rowid()"
+          ],
+          "returns": {
+            "matched_pattern": "pattern_id if recognized failure (e.g., 'used-settimeout-recursion')",
+            "should_teach": "boolean (true if attempt_number >= min_attempts)",
+            "attempts_remaining": "number (min_attempts - attempt_number)"
+          },
+          "ai_analysis": "AI checks if code matches expected failure patterns using heuristics or code execution",
+          "transition_to_teaching": "When should_teach == true, AI says: 'You discovered {pattern}. Here's why {concept} exists...'",
+          "errors": [
+            "sandbox_id not found",
+            "attempt_number < 1"
+          ]
+        }
+      ],
+      "ui_specification": {
+        "component_name": "Sandbox Attempt Tracker",
+        "location": "Chat interface, embedded before teaching begins",
+        "purpose": "Show learner sandbox progress without spoiling the challenge",
+        "wireframes": {
+          "initial_state": "\n┌─────────────────────────────────────────────────────────────┐\n│  🔨 Sandbox Challenge: Build a Countdown Timer             │\n├─────────────────────────────────────────────────────────────┤\n│  Your task: Create a countdown from 10 to 0 without using  │\n│  setInterval. Try to solve it yourself before I teach you  │\n│  the concept.                                                │\n│                                                             │\n│  ┌─────────────────────────────────────────────────────┐   │\n│  │  Attempt Progress                                   │   │\n│  │  ● ○ ○     2 more attempts before teaching begins   │   │\n│  │  ▲ Current                                           │   │\n│  └─────────────────────────────────────────────────────┘   │\n│  [Show Me Starter Code]    [I'm Ready - Show the Problem]  │\n└─────────────────────────────────────────────────────────────┘\n            ",
+          "after_attempt": "\n┌─────────────────────────────────────────────────────────────┐\n│  🔨 Sandbox Challenge: Build a Countdown Timer             │\n├─────────────────────────────────────────────────────────────┤\n│  ┌─────────────────────────────────────────────────────┐   │\n│  │  Attempt Progress                                   │   │\n│  │  ✓ ● ○     1 more attempt before teaching begins    │   │\n│  │     ▲ Current                                        │   │\n│  │  Attempt 1 Result: Used setTimeout recursively ✓    │   │\n│  │  That's a common approach! Try one more time.       │   │\n│  └─────────────────────────────────────────────────────┘   │\n│  [Review My Code]    [Try Again]                            │\n└─────────────────────────────────────────────────────────────┘\n            ",
+          "ready_to_teach": "\n┌─────────────────────────────────────────────────────────────┐\n│  🎓 Ready to Learn                                          │\n├─────────────────────────────────────────────────────────────┤\n│  ┌─────────────────────────────────────────────────────┐   │\n│  │  Attempt Progress                                   │   │\n│  │  ✓ ✓ ✓     Teaching unlocked!                       │   │\n│  │  You discovered the problem:                        │   │\n│  │  • setTimeout creates callback chains               │   │\n│  │  • Hard to cancel mid-countdown                     │   │\n│  │  Now I'll show you why setInterval exists...        │   │\n│  └─────────────────────────────────────────────────────┘   │\n│  [Continue to Teaching →]                                   │\n└─────────────────────────────────────────────────────────────┘\n            "
+        },
+        "components": [
+          "SandboxAttemptTracker",
+          "AttemptProgressDots",
+          "SandboxResultCard"
+        ],
+        "visual_design": {
+          "colors": {
+            "pending_dot": "#E5E7EB",
+            "current_dot": "#3B82F6",
+            "complete_dot": "#10B981",
+            "card_background": "#F9FAFB",
+            "border": "#E5E7EB"
+          },
+          "spacing": {
+            "card_padding": "24px",
+            "dot_gap": "8px",
+            "dot_size": "12px"
+          },
+          "animations": {
+            "current_dot": "Pulse (scale 1.0 → 1.2, 2s loop)",
+            "dot_fill": "0.3s ease-out",
+            "card_entrance": "Slide up + fade in (0.4s)"
+          }
+        },
+        "accessibility": {
+          "keyboard": [
+            "Tab to buttons",
+            "Enter/Space to activate"
+          ],
+          "screen_reader": "Attempt 1 of 2 complete. 1 more attempt before teaching begins.",
+          "aria_labels": "Progress dots announced with status"
+        },
+        "edge_cases": [
+          "User wants to skip → No skip button (pedagogically enforced)",
+          "User stuck on attempt 5 → Show hint button",
+          "User solves on attempt 1 → Still requires min_attempts"
+        ]
+      }
+    },
+    {
+      "id": "FEAT-009A",
+      "priority": "P0",
+      "name": "Sandbox Trigger Logic & Failure Pattern Detection",
+      "user_story": "As the AI tutor, I must ensure complex concepts (complexity >= 3) trigger sandboxes BEFORE teaching, and learners cannot bypass productive failure by copy-pasting working code.",
+      "acceptance_criteria": [
+        "Given a concept has complexity_level >= 3, When milestone is about to introduce it, Then check if sandbox exists for this concept",
+        "Given sandbox exists, When check completes, Then sandbox MUST be triggered BEFORE any teaching occurs (temporal ordering)",
+        "Given learner is in sandbox phase, When learner asks 'How do I fix this?', Then AI responds: 'Don't try to fix it yet. Make 2 more attempts with different approaches. Goal is to understand WHY it breaks.'",
+        "Given learner submits sandbox attempt, When code is analyzed, Then match against expected_failure_patterns in sandbox definition",
+        "Given failure pattern matched, When match occurs, Then log: {sandbox_id, attempt_number, matched_pattern_id, learner_code_snippet}",
+        "Given learner completes min_attempts, When all attempts logged, Then AI bridges to teaching: 'You discovered [pattern]. This is why [concept] exists...'",
+        "Given learner writes working code for milestone WITHOUT hitting expected impasse, When code works but learner cannot explain it, Then AI injects sandbox retroactively: 'Your code works. Before continuing, let's understand why. Try [sandbox_problem]'"
+      ],
+      "negative_constraints": [
+        "Do NOT allow teaching before sandbox if concept has complexity >= 3",
+        "Do NOT provide ANY hints during sandbox (enforce pure productive failure)",
+        "Do NOT skip sandbox even if learner requests it ('I already know this')"
+      ],
+      "technical_requirements": [
+        "Curriculum JSON must include: {concept_id, complexity_level, sandbox_id?, expected_failure_patterns: []}",
+        "Sandbox definitions must include: {id, problem_statement, expected_failures: [{pattern_id, recognition_criteria, is_correct_failure}], min_attempts}",
+        "Middleware must enforce: If complexity >= 3 AND sandbox exists, block introduce_concept until sandbox completion"
+      ],
+      "dependencies": [
+        "FEAT-009",
+        "FEAT-003"
+      ]
+    },
+    {
+      "id": "FEAT-010",
+      "priority": "P1",
+      "name": "Passive Learner Detection & Intervention",
+      "user_story": "As a teacher (the AI), I want to detect when a learner is passively copying code without asking questions so that I can prompt deeper engagement.",
+      "acceptance_criteria": [
+        "Given a session ends, When log_learner_question was never called during the session, Then the session is marked with learner_questions=0",
+        "Given 3 consecutive sessions have learner_questions=0, When should_prompt_questions is called at session start, Then the tool returns should_prompt=true",
+        "Given should_prompt=true, When the session begins, Then the AI says: 'I've noticed you haven't asked questions lately. What's unclear so far?'",
+        "Given the learner asks a question after prompting, When log_learner_question is called with prompted=true, Then the passive streak resets"
+      ],
+      "negative_constraints": [
+        "Do NOT prompt on every session (only after 3+ passive sessions)",
+        "Do NOT penalize learners who naturally don't ask questions (some are independent)",
+        "Do NOT block session progress if no questions are asked (this is just a nudge)"
+      ],
+      "dependencies": [
+        "FEAT-004"
+      ]
+    },
+    {
+      "id": "FEAT-011",
+      "priority": "P1",
+      "name": "Cross-Project Refactoring Challenges",
+      "user_story": "As a learner, I want to practice concepts I learned in past projects by refactoring old code so that I don't forget how to apply skills in different contexts.",
+      "acceptance_criteria": [
+        "Given a concept is due for review (via get_due_reviews), When the concept was learned in a previous project, Then get_refactoring_challenge is called",
+        "Given a refactoring challenge is generated, When the tool returns cross_project_code + current_project_code, Then the AI presents: 'Here's code from Project 2. Refactor it to use [concept] like you did in Project 4.'",
+        "Given the learner completes the refactoring, When the AI verifies correctness, Then log_review is called to update FSRS state"
+      ],
+      "negative_constraints": [
+        "Do NOT present refactoring challenges for brand-new concepts (must have been used in at least 2 projects)",
+        "Do NOT give hints about the solution (this is a retrieval practice exercise)",
+        "Do NOT exceed 10 lines of code for the refactoring snippet (keep it focused)"
+      ],
+      "dependencies": [
+        "FEAT-005",
+        "FEAT-007"
+      ],
+      "mcp_tools": [
+        {
+          "tool_name": "get_refactoring_challenge",
+          "when_to_call": "During spaced review, for concepts learned in past projects",
+          "typescript": "get_refactoring_challenge(params: {profile_id: string, concept_id: string}): Promise<{challenge: RefactoringChallenge}>",
+          "zod_schema": "z.object({ profile_id: z.string().regex(/^profile_[a-f0-9]{32}$/), concept_id: z.string() })",
+          "database": [
+            "SELECT ci.code_snippet, ci.snippet_context, p.name as project_name FROM concept_instance ci JOIN project p ON p.id = ci.project_id WHERE ci.profile_id = ? AND ci.concept_id = ? ORDER BY ci.created_at ASC LIMIT 1",
+            "SELECT p2.name as current_project FROM project p2 WHERE p2.profile_id = ? AND p2.status = 'in_progress'"
+          ],
+          "returns": {
+            "old_code": "string (snippet from past project)",
+            "old_project": "string (project name)",
+            "current_project": "string (current project name)",
+            "challenge_prompt": "string (e.g., 'Here's code from Todo App. Refactor it to use Array.map like in Weather App.')"
+          },
+          "ai_presentation": "AI shows old_code, asks learner to refactor using concept in current project context",
+          "errors": [
+            "no concept_instances for concept",
+            "no in_progress project"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "FEAT-012",
+      "priority": "P0",
+      "name": "WebContainer Code Execution Sandbox",
+      "user_story": "As a learner, I want to run my code instantly and safely without installing Node.js or Docker so that I can focus on learning instead of setup.",
+      "acceptance_criteria": [
+        "Given a project starts, When the learner writes code, Then the code executes inside a WebContainer (sandboxed Node.js environment in the renderer process)",
+        "Given a TypeScript file is written, When the learner clicks 'Run', Then ts-node is auto-installed in the WebContainer and the file is compiled + executed",
+        "Given the code produces output, When execution completes, Then stdout/stderr are streamed to a terminal pane in the UI (real-time logs)",
+        "Given the code has a runtime error, When the error occurs, Then the stack trace is displayed with clickable file paths (opens relevant file in editor)",
+        "Given the learner installs an npm package (e.g., 'npm install lodash'), When the command runs, Then the package is cached in the WebContainer and available for subsequent runs",
+        "Auto-save: Project state persists every 30 seconds during active session.",
+        "File-change writes to project storage MUST be debounced (e.g., max 1 write/second per file) to avoid excessive SQLite churn during rapid edits.",
+        "A periodic full snapshot MUST run at least every 30 seconds during an active coding session to guarantee crash resilience and meet the auto-save requirement."
+      ],
+      "negative_constraints": [
+        "Do NOT allow file system access outside the WebContainer (security)",
+        "Do NOT use naked Node.js child_process (bypasses sandboxing)",
+        "Do NOT block UI thread during code execution (use Web Workers if needed)"
+      ],
+      "dependencies": [
+        "FEAT-007"
+      ]
+    },
+    {
+      "id": "FEAT-013",
+      "priority": "P0",
+      "name": "Chat Interface with Markdown Rendering",
+      "user_story": "As a learner, I want to see code examples formatted with syntax highlighting and explanations in readable prose so that I can understand complex topics.",
+      "acceptance_criteria": [
+        "Given the AI sends a message, When the message contains markdown, Then the UI renders it using marked.js",
+        "Given a markdown code block is rendered, When the block includes a language tag (e.g., ```typescript), Then highlight.js applies syntax highlighting",
+        "Given a message contains HTML (via markdown), When rendering occurs, Then DOMPurify sanitizes the HTML to prevent XSS",
+        "Given the user sends a message, When the message is submitted, Then the UI displays it immediately (optimistic update) while waiting for AI response",
+        "Given the AI response is streaming, When tokens arrive, Then the UI updates incrementally (smooth typing effect)"
+      ],
+      "negative_constraints": [
+        "Do NOT render raw HTML without sanitization (XSS risk)",
+        "Do NOT block message input during AI response streaming (async input allowed)",
+        "Do NOT allow markdown images from external URLs (privacy leak)"
+      ],
+      "dependencies": []
+    },
+    {
+      "id": "FEAT-014",
+      "priority": "P0",
+      "name": "Data Export & Import System",
+      "user_story": "As a learner, I want to export my progress to a JSON file and back it up to Dropbox/iCloud so that I don't lose months of work if my laptop breaks.",
+      "acceptance_criteria": [
+        "Given the learner clicks 'Export Data' in Settings, When the export starts, Then the app bundles the SQLite database + WebContainer file tree into a .zip file",
+        "Given the export completes, When the file is saved, Then the filename is avaia_export_{profile_name}_{YYYY-MM-DD}.zip",
+        "Given the learner clicks 'Import Data', When a .zip file is selected, Then the app validates the schema (Zod validation) before extracting",
+        "Given the import is valid, When extraction starts, Then the app creates a new profile with the imported data (does not overwrite existing profiles)",
+        "Given the import fails validation, When the error occurs, Then the app displays: 'This file is corrupted or from an incompatible Avaia version.'"
+      ],
+      "negative_constraints": [
+        "Do NOT overwrite the active profile during import (prevents accidental data loss)",
+        "Do NOT export sensitive data (API key must be excluded)",
+        "Do NOT allow importing files larger than 500MB (prevents abuse)"
+      ],
+      "dependencies": [
+        "FEAT-001"
+      ]
+    },
+    {
+      "id": "FEAT-015",
+      "priority": "P0",
+      "name": "Dashboard Overview Screen",
+      "user_story": "As a learner, I want to see my current project, upcoming reviews, and recent activity at a glance so that I know what to work on today.",
+      "acceptance_criteria": [
+        "Given the app opens, When the Dashboard loads, Then the UI displays: (1) Current project card with progress bar, (2) 'Due Reviews' count badge, (3) 'Recent Sessions' list (last 5)",
+        "Given no project is active, When the Dashboard loads, Then the UI shows: 'Start Your Learning Journey' with a track selection carousel",
+        "Given reviews are due, When the Dashboard loads, Then a red badge shows the count (e.g., '3 concepts due') with a 'Review Now' button",
+        "Given a session was recently completed, When the Dashboard loads, Then the 'Recent Sessions' list shows: date, project name, milestones completed, time spent"
+      ],
+      "negative_constraints": [
+        "Do NOT show more than 5 recent sessions (keeps UI clean)",
+        "Do NOT allow starting a new project if one is already in progress (focus enforcement)",
+        "Do NOT hide the 'Due Reviews' badge even if annoying (retention priority)"
+      ],
+      "dependencies": [
+        "FEAT-007",
+        "FEAT-005"
+      ]
+    },
+    {
+      "id": "FEAT-016",
+      "priority": "P1",
+      "name": "Session Notes & Continuity System",
+      "user_story": "As a learner, I want the AI to remember what I worked on last session so that I don't have to re-explain my context every time.",
+      "acceptance_criteria": [
+        "Given a session ends, When end_session is called, Then the AI generates a session_notes summary (e.g., 'Learner completed Milestone 3: API integration. Struggled with async/await. Will review Promises next session.')",
+        "Given a new session starts, When the AI loads, Then it reads the previous session's session_notes and says: 'Last time, you were working on [X]. Ready to continue?'",
+        "Given session_notes exist, When the learner says 'yes', Then the AI resumes from the exact milestone + context"
+      ],
+      "negative_constraints": [
+        "Do NOT generate session_notes longer than 200 characters (token efficiency)",
+        "Do NOT use session_notes as a replacement for proper database state (notes are for human readability)",
+        "Do NOT allow sessions to end without session_notes (mandatory for continuity)"
+      ],
+      "dependencies": [
+        "FEAT-004"
+      ]
+    },
+    {
+      "id": "FEAT-017",
+      "priority": "P0",
+      "name": "Exit Ticket System",
+      "user_story": "As a teacher (the AI), I want to verify the learner understood the session's key concept before they leave so that I catch misunderstandings early.",
+      "acceptance_criteria": [
+        "Given a new concept was introduced during the session, When the session is about to end, Then the AI presents an exit ticket (single diagnostic question)",
+        "Given the exit ticket is answered correctly, When verify_concept is called, Then the session ends normally",
+        "Given the exit ticket is answered incorrectly, When the misconception is detected, Then the AI says: 'Let's clarify [concept] before you go' and provides a 2-minute mini-lesson"
+      ],
+      "negative_constraints": [
+        "Do NOT present exit tickets if no new concepts were introduced (only review sessions skip this)",
+        "Do NOT allow learners to skip exit tickets (optional would defeat the purpose)",
+        "Do NOT present more than 1 exit ticket per session (keeps it quick)"
+      ],
+      "dependencies": [
+        "FEAT-006",
+        "FEAT-004"
+      ]
+    },
+    {
+      "id": "FEAT-018",
+      "priority": "P2",
+      "name": "Dark Mode & Light Mode Toggle",
+      "user_story": "As a learner coding late at night, I want dark mode so that my eyes don't hurt.",
+      "acceptance_criteria": [
+        "Given the app opens, When the OS is in dark mode, Then the app defaults to dark mode",
+        "Given a theme toggle exists in Settings, When the user clicks it, Then the theme switches immediately (no restart required)",
+        "Given the theme is dark, When markdown code blocks are rendered, Then syntax highlighting uses dark-friendly colors"
+      ],
+      "negative_constraints": [
+        "Do NOT store theme preference separately from OS setting (reduces config surface)",
+        "Do NOT use pure black (#000000) for dark mode background (too harsh, use #1a1a1a)"
+      ],
+      "dependencies": []
+    },
+    {
+      "id": "FEAT-019",
+      "priority": "P1",
+      "name": "Keyboard Shortcuts",
+      "user_story": "As a power user, I want keyboard shortcuts to navigate quickly so that I don't break flow by reaching for the mouse.",
+      "acceptance_criteria": [
+        "Given the app is focused, When Cmd/Ctrl+N is pressed, Then a new session starts immediately (skips 'Start Session' button click)",
+        "Given the Dashboard is open, When Cmd/Ctrl+R is pressed, Then the Reviews screen opens",
+        "Given the Projects screen is open, When Cmd/Ctrl+P is pressed, Then the Projects list is focused",
+        "Given the chat input is focused, When Cmd/Ctrl+Enter is pressed, Then the message is sent (alternative to clicking 'Send')"
+      ],
+      "negative_constraints": [
+        "Do NOT use shortcuts that conflict with OS defaults (e.g., Cmd+Q on Mac)",
+        "Do NOT require memorizing more than 5 shortcuts (cognitive load)"
+      ],
+      "dependencies": []
+    },
+    {
+      "id": "FEAT-020",
+      "priority": "P0",
+      "name": "Preflight Check System",
+      "user_story": "As a learner, I want the app to tell me immediately if something is broken (e.g., invalid API key, corrupted database) so that I don't waste time debugging.",
+      "acceptance_criteria": [
+        "Given the app starts, When the splash screen loads, Then the app runs preflight checks: (1) API key exists and is valid, (2) SQLite database is not corrupted, (3) Internet connection is available",
+        "Given a check fails, When the error is detected, Then the app displays a modal with: 'Issue: [X]. Fix: [Y].' (e.g., 'API key invalid. Click here to re-enter.')",
+        "Given all checks pass, When preflight completes, Then the app transitions to Dashboard (< 3 seconds total)"
+      ],
+      "negative_constraints": [
+        "Do NOT block app launch if network is down (allow offline mode for browsing past sessions)",
+        "Do NOT run preflight checks on every screen transition (only on app start)",
+        "Do NOT make full AI requests during preflight (use lightweight validation)"
+      ],
+      "dependencies": [
+        "FEAT-002"
+      ]
+    },
+    {
+      "id": "FEAT-021",
+      "priority": "P0",
+      "name": "Database Migration System",
+      "user_story": "As a developer releasing updates, I want schema changes to apply automatically without users manually deleting their database.",
+      "acceptance_criteria": [
+        "Given the app version changes, When the database opens, Then the migration system checks for unapplied migrations in the _migrations table",
+        "Given a new migration exists (e.g., 009_add_independence_score.sql), When the migration runs, Then it is applied transactionally (rollback on error)",
+        "Given a migration fails, When the error occurs, Then the app logs the error and displays: 'Database upgrade failed. Please report this issue.'",
+        "Given all migrations succeed, When the database is ready, Then the app proceeds normally",
+        "Must support additive schema migrations for: diagnostic_question.question_type (application|discrimination), project_file table, and review_defer_log table.",
+        "project_file purpose: persist per-project files (code/notes/config) so projects can be reopened, exported/imported, and analysed without relying on the host filesystem path.",
+        "project_file schema (progress.db): { id TEXT PK, project_id TEXT NOT NULL, file_path TEXT NOT NULL, content TEXT NOT NULL, last_modified TEXT NOT NULL DEFAULT now }. Unique constraint: UNIQUE(project_id, file_path).",
+        "project_file path rules: file_path MUST be a normalised relative path (no absolute paths, no '..' traversal). Reject invalid paths at write time.",
+        "project_file access patterns: list files by project_id; read/update/delete by (project_id, file_path). Updates must refresh last_modified.",
+        "project_file performance: index on (project_id) is required; optional composite index (project_id, file_path) may be added if needed.",
+        "Migrations MUST be idempotent and safe to run on partially-upgraded installations.",
+        "Given a migration contains ALTER TABLE ADD COLUMN, When applying it, Then the runner MUST check column existence via PRAGMA table_info and only run the ALTER if the column is missing (SQLite-safe idempotency).",
+        "Given the app crashes mid-migration, When it restarts, Then the runner MUST resume safely without reapplying completed steps and without failing on partially-applied schema changes.",
+        "Given multiple windows/processes attempt to migrate concurrently, When migrations start, Then the runner MUST acquire an exclusive/IMMEDIATE transaction lock and ensure only one migrator proceeds."
+      ],
+      "negative_constraints": [
+        "Do NOT allow migrations to run more than once (idempotency via _migrations table)",
+        "Do NOT delete user data during migrations (additive changes only, or explicit backups)",
+        "Do NOT hang app launch on DB locks: set busy_timeout=5000 and fail gracefully if the lock persists.",
+        "Do NOT run schema migrations against curriculum.db (curriculum is replace-only and must ship with its own schema)."
+      ],
+      "dependencies": []
+    },
+    {
+      "id": "FEAT-022",
+      "priority": "P1",
+      "name": "Prompt Caching for Cost Reduction",
+      "user_story": "As a learner on a budget, I want the app to reduce AI costs by reusing repeated context (e.g., system prompt, project files).",
+      "acceptance_criteria": [
+        "Given a session starts, When the first AI request is made, Then the system prompt is marked for caching via Anthropic's prompt caching API",
+        "Given the system prompt is cached, When subsequent requests occur in the same session, Then the cached prompt is reused (90% cost reduction)",
+        "Given a project file is read, When the file content is sent to the AI, Then it is also cached (reduces input token cost for repeated file reads)"
+      ],
+      "negative_constraints": [
+        "Do NOT cache user messages (defeats the purpose; only reusable content like system prompts)",
+        "Do NOT assume caching is always available (fallback gracefully if Anthropic changes API)",
+        "Do NOT cache for more than 5 minutes (prevents stale context)"
+      ],
+      "dependencies": [
+        "FEAT-002"
+      ]
+    },
+    {
+      "id": "FEAT-023",
+      "priority": "P1",
+      "name": "Concept Visualization Library",
+      "user_story": "As a visual learner, I want to see diagrams (e.g., call stack animations, memory layouts) when the AI teaches concepts so that I understand abstract ideas.",
+      "acceptance_criteria": [
+        "Given a concept has a visualization URL (from curriculum.db), When the concept is introduced, Then the AI displays an embedded iframe or image below the explanation",
+        "Given a visualization is interactive (e.g., JavaScript Tutor), When the learner clicks 'Step', Then the visualization updates in real-time",
+        "Given no visualization exists, When the concept is taught, Then the AI uses text + code examples only (graceful fallback)"
+      ],
+      "negative_constraints": [
+        "Do NOT load external iframes without user consent (privacy risk)",
+        "Do NOT block concept teaching if visualization fails to load (optional enhancement)",
+        "Do NOT embed videos (too heavy; prefer static diagrams or interactive SVGs)"
+      ],
+      "dependencies": [
+        "FEAT-003"
+      ]
+    },
+    {
+      "id": "FEAT-024",
+      "priority": "P2",
+      "name": "Session Timer & Pomodoro Mode",
+      "user_story": "As a learner prone to burnout, I want to set a session timer (e.g., 45 minutes) so that I take breaks and avoid mental fatigue.",
+      "acceptance_criteria": [
+        "Given a session starts, When the learner sets planned_duration_minutes (default 60), Then a countdown timer is displayed in the top-right corner",
+        "Given the timer reaches 0, When the countdown completes, Then the app shows a toast notification: 'Time's up! Finish this milestone or take a break.'",
+        "Given Pomodoro Mode is enabled, When the timer reaches 0, Then the app forces a 5-minute break (chat input is disabled)"
+      ],
+      "negative_constraints": [
+        "Do NOT interrupt the learner mid-typing (wait for natural pause)",
+        "Do NOT enforce breaks if the learner is in the middle of a concept verification (let them finish)",
+        "Do NOT make Pomodoro Mode the default (optional for those who need it)"
+      ],
+      "dependencies": [
+        "FEAT-004"
+      ]
+    },
+    {
+      "id": "FEAT-025",
+      "priority": "P0",
+      "name": "Emotional State Inference & Adaptive Intervention",
+      "user_story": "As the AI tutor, I must infer learner's emotional/cognitive state from message timing patterns to provide appropriate support: allow productive struggle but intervene during frustration.",
+      "acceptance_criteria": [
+        "Given client sends message, When message is sent, Then client MUST inject metadata: {timestamp (ISO8601), time_since_last_msg_ms, session_duration_ms, message_count}",
+        "Given metadata received, When analyzed, Then classify timing pattern: (1) 30-120sec pause = productive_thinking, (2) >180sec pause = confused_or_afk, (3) <10sec rapid (3+) = frustrated",
+        "Given state == 'productive_thinking', When detected, Then DO NOT interrupt with hints (allow thinking space)",
+        "Given state == 'confused_or_afk', When detected, Then AI checks in: 'Still there? What are you working on?'",
+        "Given state == 'frustrated' (rapid panic messages), When detected, Then AI pauses: 'Let's slow down. Break this into smaller steps. What's blocking you?'",
+        "Given session_duration > 5400000ms (90 min), When threshold crossed, Then AI suggests break: 'You've been coding 90 minutes. Tired brains learn poorly. Take 10?'",
+        "Given emotional state changes, When change occurs, Then log to session.emotional_states: [{timestamp, state, confidence}]"
+      ],
+      "negative_constraints": [
+        "Do NOT interrupt productive struggle (30-120sec pauses are GOOD)",
+        "Do NOT proceed if client doesn't send metadata (emotional inference impossible without it)",
+        "Do NOT ignore frustration signals (can lead to learned helplessness, dropout)"
+      ],
+      "client_metadata_requirement": {
+        "format": "JSON in XML wrapper: <message_metadata>{...}</message_metadata>",
+        "fields": {
+          "timestamp": "ISO8601 string (e.g., '2026-01-24T14:30:00Z')",
+          "time_since_last_msg_ms": "Milliseconds since previous user message",
+          "session_duration_ms": "Milliseconds since session start",
+          "message_count": "Sequential message number (1-based)"
+        },
+        "enforcement": "If metadata missing, AI responds: 'Client error: metadata required for adaptive teaching. Please update client.'"
+      },
+      "dependencies": [
+        "FEAT-004",
+        "FEAT-027"
+      ],
+      "mcp_tools": [
+        {
+          "tool_name": "log_emotional_state",
+          "when_to_call": "After each user message (client sends timing metadata)",
+          "typescript": "log_emotional_state(params: {profile_id: string, session_id: string, message_metadata: {timestamp: string, time_since_last_ms: number, session_duration_ms: number}}): Promise<{inferred_state: string, confidence: number}>",
+          "zod_schema": "z.object({ profile_id: z.string().regex(/^profile_[a-f0-9]{32}$/), session_id: z.string().regex(/^session_[a-f0-9]{32}$/), message_metadata: z.object({ timestamp: z.string().datetime(), time_since_last_ms: z.number().int().positive(), session_duration_ms: z.number().int().positive() }) })",
+          "database": [
+            "INSERT INTO message_timing (profile_id, session_id, timestamp, time_since_last_msg_ms) VALUES (?, ?, ?, ?)",
+            "-- Analyze timing pattern to infer state",
+            "UPDATE message_timing SET inferred_state = ?, confidence = ? WHERE id = last_insert_rowid()",
+            "UPDATE session SET emotional_states = json_insert(emotional_states, '$[#]', json_object('timestamp', ?, 'state', ?, 'confidence', ?)) WHERE id = ?"
+          ],
+          "returns": {
+            "inferred_state": "'productive_thinking' | 'confused' | 'frustrated' | 'flow' | 'tired'",
+            "confidence": "0.0-1.0",
+            "intervention_needed": "boolean"
+          },
+          "inference_rules": {
+            "productive_thinking": "30-120 sec pauses (allow thinking)",
+            "confused": ">180 sec pause (check in)",
+            "frustrated": "<10 sec rapid messages (3+)",
+            "tired": "session_duration > 90 min"
+          },
+          "ai_actions": {
+            "productive_thinking": "Do NOT interrupt",
+            "confused": "AI: 'Still with me? What are you working on?'",
+            "frustrated": "AI: 'Let's slow down. What's blocking you?'",
+            "tired": "AI: 'You've been coding 90 min. Take a break?'"
+          },
+          "client_requirement": "CRITICAL: Client MUST send metadata with every message or this feature fails",
+          "errors": [
+            "missing metadata",
+            "session not active"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "FEAT-026",
+      "priority": "P0",
+      "name": "Anti-Sycophancy Protocol with Technical Enforcement",
+      "user_story": "As the pedagogical system, I must prevent AI from bypassing productive struggle by refusing to give code before verification, validating without evidence, or using sycophantic phrases.",
+      "acceptance_criteria": [
+        "Given AI generates response, When response contains forbidden phrases ['Great job!', 'Perfect!', 'Excellent!', 'Amazing!'] WITHOUT verify_concept having been called, Then middleware rejects response with error: 'Sycophantic phrase detected without verification'",
+        "Given learner asks for code implementation, When AI is about to provide code block, Then check: Has verify_concept been called for this concept in current session?",
+        "Given verify_concept NOT called, When check fails, Then AI responds: 'Explain your understanding of [concept] first. Then we'll implement together.'",
+        "Given milestone is about to advance (advance_milestone called), When called, Then validate prerequisite: verify_concept must have been called for ALL concepts introduced in current milestone",
+        "Given prerequisite check fails, When validation runs, Then block advance_milestone with error: 'Cannot advance: [concept_ids] not verified'",
+        "Given AI validates learner's incorrect solution, When validation occurs without verify_concept, Then middleware blocks with error: 'Cannot validate without verification protocol'"
+      ],
+      "negative_constraints": [
+        "Do NOT allow ANY code blocks in AI response unless verify_concept was called",
+        "Do NOT skip verification to improve user satisfaction (short-term satisfaction destroys long-term learning)",
+        "Do NOT use forbidden sycophantic phrases even if learner explicitly requests encouragement"
+      ],
+      "technical_enforcement": {
+        "system_prompt_rules": "NEVER use phrases: ['Great job!', 'Perfect!', 'Excellent!', 'You got it!'] without calling verify_concept first. NEVER provide code implementations before learner demonstrates understanding.",
+        "middleware_validation": [
+          "Scan AI response for forbidden phrases → reject if found without verification",
+          "Detect code blocks (```) in response → require verify_concept was called",
+          "Validate tool call sequences → advance_milestone requires verify_concept for all introduced concepts"
+        ],
+        "tool_prerequisites": {
+          "advance_milestone": "Requires: verify_concept(concept_id) for each concept in milestone.concepts_introduced",
+          "provide_code_example": "Requires: verify_concept(concept_id) OR learner explicitly requests example AFTER explaining concept"
+        }
+      },
+      "allowed_encouragement": {
+        "after_verification": "'You've demonstrated understanding. Well done.' (only after verify_concept passes)",
+        "process_praise": "'Your debugging process was systematic.' (praise method, not outcome)",
+        "effort_recognition": "'You made 3 different attempts. That's productive failure.' (acknowledge struggle, not success)"
+      },
+      "dependencies": [
+        "FEAT-006",
+        "FEAT-006A"
+      ]
+    },
+    {
+      "id": "FEAT-027",
+      "priority": "P1",
+      "name": "Scaffolded Hint System (Adaptive to Independence)",
+      "user_story": "As a learner building independence, I want hints to gradually decrease as I improve so that I learn to solve problems myself.",
+      "acceptance_criteria": [
+        "Given a learner requests a hint, When their independence_score < 30, Then the AI provides a detailed hint (e.g., 'You need a loop here. Use forEach.')",
+        "Given independence_score >= 30 and < 70, When a hint is requested, Then the AI provides a medium hint (e.g., 'Think about iterating over the array.')",
+        "Given independence_score >= 70, When a hint is requested, Then the AI provides a minimal hint (e.g., 'What structure lets you repeat actions?')",
+        "Given the learner solves problems without hints, When correct attempts accumulate, Then independence_score increases automatically"
+      ],
+      "negative_constraints": [
+        "Do NOT give the answer in the first hint (defeats scaffolding)",
+        "Do NOT make hints so vague they're useless (balance challenge with support)",
+        "Do NOT decrease independence_score for asking questions (questions ≠ dependence)"
+      ],
+      "dependencies": [
+        "FEAT-005"
+      ],
+      "mcp_tools": [
+        {
+          "tool_name": "get_hint",
+          "when_to_call": "Learner requests help or stuck for >5 min",
+          "typescript": "get_hint(params: {profile_id: string, concept_id: string, hint_type: 'syntax' | 'logic' | 'example'}): Promise<{hint: string, explicitness_level: number}>",
+          "zod_schema": "z.object({ profile_id: z.string().regex(/^profile_[a-f0-9]{32}$/), concept_id: z.string(), hint_type: z.enum(['syntax', 'logic', 'example']) })",
+          "database": [
+            "SELECT independence_score, hint_count FROM concept_mastery WHERE profile_id = ? AND concept_id = ?"
+          ],
+          "returns": {
+            "hint": "string (adaptive based on independence_score)",
+            "explicitness_level": "1-5 (1=cryptic, 5=explicit)",
+            "independence_score": "Current score before hint"
+          },
+          "adaptive_logic": {
+            "novice_0_30": "Explicit hints with code examples",
+            "learning_31_70": "Conceptual hints without code",
+            "proficient_71_100": "Minimal Socratic questions"
+          },
+          "ai_generation": "AI generates hint based on independence_score from database",
+          "errors": [
+            "concept not introduced",
+            "profile_id not found"
+          ]
+        },
+        {
+          "tool_name": "update_independence_score",
+          "when_to_call": "After learner solves problem (with or without hints)",
+          "typescript": "update_independence_score(params: {profile_id: string, concept_id: string, hints_used: number, solved_independently: boolean}): Promise<{new_score: number}>",
+          "zod_schema": "z.object({ profile_id: z.string().regex(/^profile_[a-f0-9]{32}$/), concept_id: z.string(), hints_used: z.number().int().min(0), solved_independently: z.boolean() })",
+          "database": [
+            "UPDATE concept_mastery SET independence_score = CASE WHEN ? THEN MIN(100, independence_score + 5) ELSE MAX(0, independence_score - 5) END, hint_count = hint_count + ? WHERE profile_id = ? AND concept_id = ?"
+          ],
+          "returns": {
+            "new_score": "number (0-100)",
+            "trend": "'improving' | 'declining' | 'stable'"
+          },
+          "scoring_logic": {
+            "solved_independently_true": "+5 points",
+            "solved_independently_false_with_hints": "-5 points",
+            "clamped": "0-100 range"
+          },
+          "errors": [
+            "concept not in mastery table"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "FEAT-028",
+      "priority": "P1",
+      "name": "Contrasting Cases for Misconceptions",
+      "user_story": "As a learner who made a mistake, I want to see two nearly-identical code examples (one correct, one incorrect) so that I pinpoint what I misunderstood.",
+      "acceptance_criteria": [
+        "Given a misconception is detected, When verify_concept flags it, Then the AI retrieves the contrasting_case from the Misconception table",
+        "Given a contrasting case exists, When presented, Then the UI shows two code blocks side-by-side with a single highlighted difference",
+        "Given the learner studies the contrasting case, When they articulate the difference, Then the AI confirms: 'Exactly. The key is [X].'",
+        "Given no contrasting case exists, When the misconception is flagged, Then the AI generates one dynamically using the learner's own code"
+      ],
+      "negative_constraints": [
+        "Do NOT show more than 10 lines of code per contrasting case (too much cognitive load)",
+        "Do NOT make the difference too subtle (learners miss it)",
+        "Do NOT use generic examples if the learner's code is available (use their actual mistake)"
+      ],
+      "dependencies": [
+        "FEAT-006"
+      ]
+    },
+    {
+      "id": "FEAT-029",
+      "priority": "P1",
+      "name": "Question Pattern Analysis",
+      "user_story": "As a teacher (the AI), I want to track what types of questions the learner asks (e.g., 'how', 'why', 'what if') so that I adjust explanations to their curiosity style.",
+      "acceptance_criteria": [
+        "Given a learner asks a question, When log_learner_question is called, Then the question_type is classified: 'how' (procedural), 'why' (conceptual), 'what_if' (exploratory), 'debug' (error-fixing)",
+        "Given patterns accumulate, When get_question_patterns is called, Then the tool returns: total_questions, avg_per_session, breakdown by question_type",
+        "Given the learner asks mostly 'why' questions, When the AI teaches, Then it proactively includes motivation ('Here's why this exists...')",
+        "Given the learner asks mostly 'how' questions, When the AI teaches, Then it prioritizes step-by-step instructions over theory"
+      ],
+      "negative_constraints": [
+        "Do NOT classify questions if the learner copy-pasted from the AI (that's not a genuine question)",
+        "Do NOT change teaching style based on a single question (require 5+ questions for pattern)",
+        "Do NOT expose question analytics to the learner (they may game the system)"
+      ],
+      "dependencies": [
+        "FEAT-010"
+      ]
+    },
+    {
+      "id": "FEAT-030",
+      "priority": "P1",
+      "name": "Error Reporting & Telemetry System",
+      "user_story": "As a developer maintaining the app, I want to know when crashes occur so that I fix bugs proactively instead of waiting for user complaints.",
+      "acceptance_criteria": [
+        "Given the app crashes, When the error occurs, Then Sentry captures the stack trace + OS + app version and sends it to the Sentry dashboard",
+        "Given a session completes successfully, When the session ends, Then PostHog logs: learner_id (hashed), session_duration, milestones_completed, concepts_introduced (no PII, no code snippets)",
+        "Given telemetry is enabled, When the app starts, Then a one-time consent dialog appears: 'Help improve Avaia by sending anonymous usage data. [Accept] [Decline]'",
+        "Given the learner declines, When telemetry is disabled, Then Sentry and PostHog are completely disabled (no network requests)"
+      ],
+      "negative_constraints": [
+        "Do NOT send learner names, code snippets, or API keys (PII-free only)",
+        "Do NOT block app functionality if telemetry fails (fire-and-forget)",
+        "Do NOT pester users to re-enable telemetry if they declined (respect consent)"
+      ],
+      "dependencies": []
+    },
+    {
+      "id": "FEAT-031",
+      "priority": "P0",
+      "name": "Cognitive Load Monitoring & Prevention",
+      "user_story": "As the pedagogical system, I must prevent cognitive overload by limiting project complexity, detecting copy-paste behavior, and intervening when learners show overload signals.",
+      "acceptance_criteria": [
+        "Given curriculum is loaded, When project definition is parsed, Then count conceptually-distinct domains (e.g., Runtime Environment, Server Framework, Database, Security, API Design)",
+        "Given concept_domains counted, When validation runs, Then check against tier limits: Beginner<=2, Intermediate<=3, Advanced<=4",
+        "Given domains exceed limit, When validation fails, Then error: 'Project exceeds cognitive load limit for [tier]. Split into sub-projects OR mark [domains] as pre-built modules'",
+        "Given learner submits code, When code is analyzed, Then detect copy-paste: code is byte-identical to example with zero modifications",
+        "Given copy-paste detected, When flag is set, Then AI requires articulation: 'Explain what this line does: [line from pasted code]'",
+        "Given learner cannot explain, When articulation fails, Then block progression: 'Let's understand this before continuing'",
+        "Given session duration >20 minutes with no learner questions, When pattern detected, Then AI intervenes: 'You've been quiet. Feeling overwhelmed? Let's break this down.'",
+        "Given message gaps >3 minutes repeatedly, When pattern detected, Then AI checks: 'Still with me? What are you working on?'",
+        "Given rapid messages <10 sec apart (3+ in sequence), When panic pattern detected, Then AI pauses: 'Let's slow down. What's blocking you specifically?'"
+      ],
+      "negative_constraints": [
+        "Do NOT allow projects with >4 conceptually-distinct domains (hard limit)",
+        "Do NOT advance milestone if copy-paste flag is active without successful articulation",
+        "Do NOT ignore cognitive overload signals (silence, long pauses, panic messages)"
+      ],
+      "domain_detection_logic": {
+        "conceptually_distinct_test": "Can learner master Domain A without any knowledge of Domain B? If yes → distinct domains",
+        "examples_distinct": "SQL can be learned without Node.js → DISTINCT | Express requires Node.js → NOT distinct",
+        "domain_categories": [
+          "Runtime Environment",
+          "Framework/Library",
+          "Database/Persistence",
+          "Security/Auth",
+          "API Design",
+          "State Management",
+          "Real-time Communication"
+        ]
+      },
+      "overload_signal_thresholds": {
+        "silence": "No questions for 20+ consecutive minutes in active session",
+        "long_pauses": "3+ message gaps exceeding 3 minutes each",
+        "panic": "3+ messages with <10 sec gaps between them"
+      },
+      "dependencies": [
+        "FEAT-003",
+        "FEAT-004"
+      ],
+      "mcp_tools": [
+        {
+          "tool_name": "detect_copy_paste",
+          "when_to_call": "After learner submits code",
+          "typescript": "detect_copy_paste(params: {profile_id: string, concept_id: string, code_submitted: string, example_code: string}): Promise<{is_copy_paste: boolean, similarity_score: number}>",
+          "zod_schema": "z.object({ profile_id: z.string().regex(/^profile_[a-f0-9]{32}$/), concept_id: z.string(), code_submitted: z.string(), example_code: z.string() })",
+          "database": [
+            "-- No database write, just detection logic"
+          ],
+          "returns": {
+            "is_copy_paste": "boolean (true if byte-identical or >95% similar)",
+            "similarity_score": "0.0-1.0",
+            "requires_articulation": "boolean"
+          },
+          "detection_logic": "Compare code_submitted to example_code. If identical or only variable names changed → copy-paste",
+          "ai_action_if_detected": "AI: 'This looks like the example. Explain what this line does: [random_line]'",
+          "blocks_progression": "If articulation fails, cannot advance milestone",
+          "errors": [
+            "concept_id not found"
+          ]
+        },
+        {
+          "tool_name": "log_learner_question",
+          "when_to_call": "When learner asks a question (not just messages)",
+          "typescript": "log_learner_question(params: {profile_id: string, session_id: string, question: string, prompted: boolean}): Promise<{success: boolean}>",
+          "zod_schema": "z.object({ profile_id: z.string().regex(/^profile_[a-f0-9]{32}$/), session_id: z.string().regex(/^session_[a-f0-9]{32}$/), question: z.string(), prompted: z.boolean() })",
+          "database": [
+            "UPDATE session SET learner_questions_count = learner_questions_count + 1 WHERE id = ?",
+            "UPDATE learner_question_patterns SET consecutive_passive_sessions = 0, last_question_at = datetime('now'), total_questions_asked = total_questions_asked + 1 WHERE profile_id = ?"
+          ],
+          "returns": {
+            "success": "boolean",
+            "questions_this_session": "number",
+            "passive_streak_broken": "boolean (if was consecutive_passive > 0)"
+          },
+          "passive_detection": "If learner_questions_count == 0 for 3+ sessions, AI prompts: 'You've been quiet. What's unclear?'",
+          "errors": [
+            "session not found"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "FEAT-032",
+      "priority": "P0",
+      "name": "Stuck Learner Intervention Ladder (No Human Escalation)",
+      "user_story": "As a learner struggling with a concept after multiple attempts, I want the AI to diagnose WHY I'm stuck and try different teaching approaches so that I don't give up and drop out.",
+      "research_foundation": "VanLehn (1988): Impasse-driven learning requires identifying TYPE of impasse. Chi et al. (1989): Different learners respond to different explanation styles. Kapur (2008): Productive failure has limits—must not cross into learned helplessness.",
+      "acceptance_criteria": [
+        "Given concept has concept_mastery.high_confidence_errors >= 1 AND learner has failed verification 3+ times, When 3rd failure occurs, Then trigger_intervention_ladder is called",
+        "Given intervention ladder triggered, When Stage 3 begins, Then run prerequisite_diagnostic: check if required prior concepts are in REVIEW state with stability > 5 days",
+        "Given prerequisite missing (state != REVIEW OR stability < 5), When detected, Then AI: 'You're struggling with [concept] because [prerequisite] is shaky. Let's solidify that first.'",
+        "Given prerequisite remediated, When learner returns to original concept, Then restart teaching from sandbox (fresh attempt)",
+        "Given all prerequisites solid, When Stage 4 begins, Then try multi_modal_teaching: (1) Physical analogy, (2) Diagram description, (3) Real-world use case",
+        "Given learner responds positively to modality (e.g., 'That analogy helped!'), When detected, Then update learning_preferences: preferred_explanation_style = 'physical_analogies'",
+        "Given all modalities tried AND still failing, When Stage 5 begins, Then decompose_concept: break into 2-3 sub-concepts and teach sequentially",
+        "Given decomposition fails, When Stage 6 begins, Then strategic_deferral: 'This concept is challenging right now. Let's come back to it in 7 days after building related skills.'",
+        "Given concept deferred, When deferral occurs, Then mark concept.state = 'deferred', schedule retry_date = now + 7 days, find_alternative_path to continue project without this concept"
+      ],
+      "negative_constraints": [
+        "Do NOT repeat the same teaching approach twice (if contrasting case failed, don't show another contrasting case)",
+        "Do NOT defer more than 2 concepts per project (prevents cascading deferrals)",
+        "Do NOT give up on concept permanently (always schedule retry)",
+        "Do NOT make learner feel stupid ('You're struggling' NOT 'You can't understand')"
+      ],
+      "stage_3_prerequisite_diagnostic": {
+        "how_it_works": "For target concept (e.g., 'async/await'), check curriculum.prerequisites array (e.g., ['callbacks', 'promises']). Query concept_memory table: Are these in REVIEW state with stability > 5 days?",
+        "if_missing": "Interrupt current milestone: 'Async/await builds on promises. Your promise understanding is shaky (last reviewed 2 days ago, stability = 3 days). Let's review promises first.'",
+        "remediation": "Present 2-3 promise review questions → re-verify → if passed, return to async/await teaching",
+        "curriculum_requirement": "Every concept MUST have prerequisites array in curriculum.db: {concept_id, prerequisites: [concept_ids]}"
+      },
+      "stage_4_multi_modal_teaching": {
+        "modality_1_physical_analogy": {
+          "example_closures": "Closures are like a backpack. The function is a person, variables are items in the backpack. Even after leaving a location (outer function returns), the person still carries the backpack (inner function still accesses variables).",
+          "example_async": "Async is like ordering food at a restaurant. You don't stand at the kitchen door waiting (blocking). You sit down, they bring it when ready (callback). Await is like a waiter saying 'I'll stand here until your food is ready' (looks synchronous but doesn't block other tables)."
+        },
+        "modality_2_diagram_description": {
+          "example_closures": "Imagine nested boxes. Outer box (outer function) contains inner box (inner function). When outer box is removed, inner box still exists with its contents (variables). ASCII art: [Outer Fn [Inner Fn [vars]]]",
+          "example_async": "Timeline diagram: Time flows left to right. Synchronous: |--action1--|--action2--|--action3--|  Async: |--action1 starts--| then immediately |--action2 starts--| (action1 completes later)"
+        },
+        "modality_3_real_world_use_case": {
+          "example_closures": "You're building a counter app. Each time user clicks +1, the count increases. But where is 'count' stored? Not global (unsafe). Closure: count lives in outer function, inner function (click handler) accesses it. Private state.",
+          "example_async": "You're building weather app. If you fetch weather synchronously, entire UI freezes for 2 seconds while waiting for server. With async, UI stays responsive, weather data appears when ready."
+        }
+      },
+      "stage_5_concept_decomposition": {
+        "how_it_works": "Break complex concept into teachable sub-concepts. Teach each sequentially with verification.",
+        "example_async_await": {
+          "original_concept": "Async/Await (complexity = 5)",
+          "decomposition": [
+            {
+              "sub_concept_id": "async-1-promises-basics",
+              "name": "Promises: Pending → Fulfilled/Rejected",
+              "complexity": 3,
+              "teaching_focus": "What a promise represents, .then() syntax"
+            },
+            {
+              "sub_concept_id": "async-2-promise-chaining",
+              "name": "Promise Chaining",
+              "complexity": 3,
+              "teaching_focus": "Sequential async operations with .then().then()"
+            },
+            {
+              "sub_concept_id": "async-3-await-syntax",
+              "name": "Await Syntax",
+              "complexity": 2,
+              "teaching_focus": "await unwraps promise, must be in async function"
+            },
+            {
+              "sub_concept_id": "async-4-error-handling",
+              "name": "Try/Catch with Async",
+              "complexity": 3,
+              "teaching_focus": "Catching promise rejections"
+            }
+          ],
+          "teaching_sequence": "Teach async-1 → verify → teach async-2 → verify → teach async-3 → verify → teach async-4 → verify → NOW learner understands async/await"
+        },
+        "curriculum_requirement": "Complex concepts (complexity >= 4) SHOULD have decomposition_path in curriculum.db"
+      },
+      "stage_6_strategic_deferral": {
+        "how_it_works": "Mark concept as 'deferred', find alternative path through project that doesn't require this concept YET, schedule retry in 7 days",
+        "example_scenario": "Learner stuck on 'closures' in Project 2 (Memory Game). Closure is used for card flip handlers. AI: 'Let's defer closures for now. I'll refactor the code to use a different pattern (data attributes). You'll still finish the project, and we'll revisit closures in Project 3 where it's essential.'",
+        "alternative_path_strategies": [
+          "Use simpler pattern temporarily (e.g., data attributes instead of closures)",
+          "Provide pre-built module for this milestone (e.g., 'Here's the auth logic. We'll build it from scratch in Project 5.')",
+          "Skip optional milestone (e.g., 'Animations are optional. Let's skip for now, finish core functionality.')"
+        ],
+        "retry_scheduling": "After 7 days, learner has: (1) built related skills, (2) forgotten frustration (fresh perspective), (3) seen concept used in different contexts. Retry with Stage 1 (fresh sandbox).",
+        "max_deferrals": "Do NOT allow >2 deferred concepts per project (prevents learner from skipping all hard concepts)"
+      },
+      "learner_sentiment_monitoring": {
+        "positive_signals": [
+          "Learner says: 'Oh that makes sense!', 'The analogy helped!', 'I get it now!'",
+          "Learner asks follow-up questions (shows engagement)",
+          "Response time decreases (confidence building)"
+        ],
+        "negative_signals": [
+          "Learner says: 'I don't get it', 'This is too hard', 'I give up'",
+          "Long pauses after explanation (>5 min)",
+          "Repeating same wrong answer (not learning from feedback)"
+        ],
+        "action_on_negative": "If 2+ negative signals detected, escalate intervention stage immediately (don't wait for 3rd verification failure)"
+      },
+      "success_metrics": {
+        "intervention_effectiveness": "After intervention ladder, >70% of stuck learners successfully verify concept within 2 sessions",
+        "dropout_prevention": "Learners who hit intervention ladder have <10% dropout rate (vs ~40% without intervention)",
+        "prerequisite_detection_accuracy": ">80% of stuck learners have missing/weak prerequisite when diagnosed",
+        "deferral_return_rate": ">60% of deferred concepts are successfully learned when retried after 7 days"
+      },
+      "anti_metrics": {
+        "do_not_optimize": [
+          "Speed to completion (intervention takes time, rushing causes permanent gaps)",
+          "Concept completion rate in first attempt (productive failure REQUIRES initial failure)",
+          "AI response length (some modalities require longer explanations)"
+        ]
+      },
+      "dependencies": [
+        "FEAT-003",
+        "FEAT-005",
+        "FEAT-006B",
+        "FEAT-008"
+      ],
+      "implementation_notes": {
+        "curriculum_schema_addition": "Add to curriculum.db: {concept_id, prerequisites: [ids], decomposition_path?: [sub_concept_ids], alternative_patterns?: [patterns]}",
+        "database_schema_addition": "Use existing tables: concept_memory for state/retry_date, concept_intervention for stage_reached/modality_* fields (see avaia-schema-v2.sql).",
+        "tool_additions": [
+          "trigger_intervention_ladder(concept_id, failure_count)",
+          "check_prerequisites(concept_id) → {missing: [concept_ids], weak: [concept_ids]}",
+          "decompose_concept(concept_id) → {sub_concepts: [...], teaching_order: [ids]}",
+          "defer_concept(concept_id, retry_days) → {deferred: true, retry_date, alternative_path}"
+        ]
+      },
+      "mcp_tools": [
+        {
+          "tool_name": "trigger_intervention_ladder",
+          "when_to_call": "After 3+ verification failures on same concept",
+          "typescript": "trigger_intervention_ladder(params: {profile_id: string, concept_id: string, failure_count: number}): Promise<{stage: number, action: string}>",
+          "zod_schema": "z.object({ profile_id: z.string().regex(/^profile_[a-f0-9]{32}$/), concept_id: z.string(), failure_count: z.number().int().min(3) })",
+          "database": [
+            "INSERT INTO concept_intervention (profile_id, concept_id, stage_reached, timestamp) VALUES (?, ?, 3, datetime('now'))"
+          ],
+          "returns": {
+            "stage": "number (3-6, depending on progression)",
+            "action": "'check_prerequisites' | 'try_modality' | 'decompose' | 'defer'",
+            "intervention_id": "string (for tracking)"
+          },
+          "six_stages": {
+            "stage_1_2": "Standard teaching (already tried)",
+            "stage_3": "Prerequisite diagnostic",
+            "stage_4": "Multi-modal teaching (analogy, diagram, use case)",
+            "stage_5": "Concept decomposition",
+            "stage_6": "Strategic deferral"
+          },
+          "ai_guidance": "AI follows stage-specific approach from FEAT-032 spec",
+          "errors": [
+            "failure_count < 3",
+            "concept not introduced"
+          ]
+        },
+        {
+          "tool_name": "log_intervention_stage",
+          "when_to_call": "After attempting each intervention stage",
+          "typescript": "log_intervention_stage(params: {intervention_id: string, stage: number, modality_tried?: string, outcome: 'resolved' | 'failed' | 'partial'}): Promise<{success: boolean, next_stage?: number}>",
+          "zod_schema": "z.object({ intervention_id: z.string().regex(/^intervention_[a-f0-9]{32}$/), stage: z.number().int().min(3).max(6), modality_tried: z.enum(['physical_analogy', 'diagram', 'use_case']).optional(), outcome: z.enum(['resolved', 'failed', 'partial']) })",
+          "database": [
+            "UPDATE concept_intervention SET modality_tried = ?, resolved = CASE WHEN ? = 'resolved' THEN TRUE ELSE FALSE END, resolved_at = CASE WHEN ? = 'resolved' THEN datetime('now') ELSE NULL END WHERE id = ?"
+          ],
+          "returns": {
+            "success": "boolean",
+            "next_stage": "number (if outcome == 'failed', escalate to stage + 1)",
+            "should_defer": "boolean (if stage == 6 and outcome == 'failed')"
+          },
+          "escalation_logic": "If outcome == 'failed', move to next stage. If stage == 6 and failed, call defer_concept.",
+          "errors": [
+            "intervention_id not found"
+          ]
+        },
+        {
+          "tool_name": "defer_concept",
+          "when_to_call": "Stage 6 intervention failed, or learner explicitly requests",
+          "typescript": "defer_concept(params: {profile_id: string, concept_id: string, retry_days: number, deferral_reason: string}): Promise<{success: boolean, retry_date: string}>",
+          "zod_schema": "z.object({ profile_id: z.string().regex(/^profile_[a-f0-9]{32}$/), concept_id: z.string(), retry_days: z.number().int().min(1).max(30).default(7), deferral_reason: z.string() })",
+          "database": [
+            "UPDATE concept_memory SET state = 'deferred' WHERE profile_id = ? AND concept_id = ?",
+            "UPDATE concept_intervention SET deferred_at = datetime('now'), retry_date = datetime('now', '+' || ? || ' days'), deferral_reason = ? WHERE profile_id = ? AND concept_id = ? ORDER BY timestamp DESC LIMIT 1"
+          ],
+          "returns": {
+            "success": "boolean",
+            "retry_date": "ISO datetime (now + retry_days)",
+            "alternative_path": "string (e.g., 'Use data-attributes instead of closures for now')"
+          },
+          "max_deferrals_per_project": "2 (prevent learner from skipping all hard concepts)",
+          "ai_messaging": "AI: 'Let's defer {concept} for now. We'll revisit in 7 days after building related skills.'",
+          "errors": [
+            "max deferrals reached",
+            "concept already deferred"
+          ]
+        }
+      ],
+      "ui_specification": {
+        "component_name": "Intervention Progress Indicator",
+        "location": "Chat interface, top banner when intervention is active",
+        "purpose": "Show learner which intervention stage is active (transparency)",
+        "wireframes": {
+          "stage_3": "\n┌─────────────────────────────────────────────────────────────┐\n│  🔍 Checking Prerequisites                                  │\n├─────────────────────────────────────────────────────────────┤\n│  Intervention Progress:                                     │\n│  1──────2──────●──────4──────5──────6                      │\n│  Standard     ▲     Multi-  Decomp  Defer                  │\n│  Teaching   Current  modal                                  │\n│  I'm checking if there are gaps in prerequisite concepts.   │\n└─────────────────────────────────────────────────────────────┘\n            ",
+          "stage_4": "\n┌─────────────────────────────────────────────────────────────┐\n│  🎯 Trying Different Approach                               │\n├─────────────────────────────────────────────────────────────┤\n│  Intervention Progress:                                     │\n│  ✓──────✓──────✓──────●──────5──────6                      │\n│  Let's try explaining this differently. Which helps more?   │\n│  ┌───────────────┐  ┌───────────────┐  ┌───────────────┐  │\n│  │ 🎒 Physical   │  │ 📊 Diagram    │  │ 💼 Real Use   │  │\n│  │   Analogy     │  │               │  │    Case       │  │\n│  │ [Try This]    │  │ [Try This]    │  │ [Try This]    │  │\n│  └───────────────┘  └───────────────┘  └───────────────┘  │\n└─────────────────────────────────────────────────────────────┘\n            "
+        },
+        "components": [
+          "InterventionProgressBar",
+          "MultiModalSelector"
+        ],
+        "visual_design": {
+          "progress_bar": {
+            "completed": "#10B981",
+            "current": "#3B82F6 with pulse",
+            "future": "#E5E7EB",
+            "connection_lines": "#D1D5DB, 2px"
+          },
+          "banner_background": {
+            "active_intervention": "#FEF3C7 (yellow-50)",
+            "deferral": "#DBEAFE (blue-50)",
+            "border": "2px solid #FCD34D"
+          },
+          "modal_cards": {
+            "background": "white",
+            "border": "2px solid #E5E7EB",
+            "hover": "border-color: #3B82F6, shadow lift",
+            "padding": "16px",
+            "border_radius": "8px"
+          }
+        },
+        "accessibility": {
+          "aria": "role=progressbar, aria-valuenow=4, aria-valuemin=1, aria-valuemax=6",
+          "screen_reader": "Announces stage changes: 'Now trying multi-modal teaching, stage 4 of 6'"
+        }
+      }
+    },
+    {
+      "id": "FEAT-033",
+      "priority": "P0",
+      "name": "Legacy Data Import (v1 → v2)",
+      "user_story": "As an existing user upgrading from v1, I want my profiles, progress.db files, and API key to be discovered and migrated into the new userData directory automatically so my data is not lost after upgrade.",
+      "acceptance_criteria": [
+        "Given the v2 profiles directory is empty, When the app starts, Then it scans legacy roots (e.g., ~/.avaia and prior app data folders) for profile folders containing progress.db and imports them into app.getPath('userData')/profiles/.",
+        "Given a legacy profile folder contains progress.db, When importing, Then the destination folder name MUST be the canonical profile.id read from the profile table inside that progress.db (no ID conversion unless unavoidable).",
+        "Given multiple legacy profiles exist, When importing, Then the app imports all valid profiles, logs any skipped folders (missing/invalid DB), and continues without failing the whole upgrade.",
+        "Given the global API key does not exist, When importing, Then the app searches legacy profiles for .api_key, selects the key from the most recently modified legacy .api_key file (fallback: first found), and copies it to app.getPath('userData')/.api_key.",
+        "Given a legacy import is interrupted, When the app restarts, Then the import is safe to rerun and does not destroy or duplicate already imported profiles."
+      ],
+      "negative_constraints": [
+        "Do NOT overwrite an existing v2 profile folder; if a destination exists, skip import for that profile and log the conflict.",
+        "Do NOT delete legacy data; keep backups or mark legacy files as migrated (e.g., rename .api_key → .api_key.migrated) after successful copy."
+      ],
+      "dependencies": [
+        "FEAT-021 Database Migration System"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Avaia: Product Architecture & Specifications</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+        /* Custom Scrollbar for code blocks */
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+
+        /* Chart Container Utilities */
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 600px; /* Default max-width */
+            height: 300px;
+            max-height: 400px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        
+        /* Interactive element transitions */
+        .interactive-card {
+            transition: all 0.2s ease-in-out;
+        }
+        .interactive-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+
+        /* Code block styling */
+        .code-block {
+            font-family: 'Menlo', 'Monaco', 'Courier New', monospace;
+            background-color: #1e293b; /* Slate 800 */
+            color: #e2e8f0; /* Slate 200 */
+        }
+    </style>
+    <!-- Chosen Palette: Slate (Backgrounds/Text) + Blue (Primary Actions) + Emerald (Success) + Amber (Warnings) -->
+    <!-- Application Structure Plan:
+        1. Header: Project Identity & High-level stats.
+        2. Vision & Personas: Grid of cards + Radar Chart for Persona analysis.
+        3. Onboarding Experience: Interactive Stepper visualizing the user flow + Bar Chart for time budget.
+        4. Architecture Explorer (The Core): A 2-column layout. Left: Feature Modules. Right: MCP Tools Grid. 
+           Clicking a tool reveals the deep technical specs (TS signatures, SQL).
+           This structure allows stakeholders to start high-level and drill down into the code specs.
+    -->
+    <!-- Visualization & Content Choices:
+        - Persona Radar Chart: To visually compare the needs of the two key personas (Learner vs Parent).
+        - Onboarding Time Budget Bar Chart: To validate the "Under 5 Minutes" goal from the spec.
+        - MCP Tool Explorer: Uses interactive cards to manage the density of 23+ tools. Filters by "Feature" to keep it manageable.
+        - Code blocks: Use pre/code tags for the TS/SQL to maintain technical accuracy.
+        - NO SVG/Mermaid: All icons are Unicode or CSS shapes. Charts are Chart.js Canvas.
+    -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+</head>
+<body class="bg-slate-50 text-slate-800 font-sans leading-relaxed selection:bg-blue-100">
+
+    <!-- Navbar -->
+    <nav class="bg-white border-b border-slate-200 sticky top-0 z-50 shadow-sm">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16">
+                <div class="flex items-center gap-3">
+                    <div class="h-8 w-8 bg-blue-600 rounded-lg flex items-center justify-center text-white font-bold">A</div>
+                    <div>
+                        <h1 class="text-xl font-bold text-slate-900 tracking-tight">Avaia <span class="text-slate-400 font-normal">| Product Spec v2.0</span></h1>
+                    </div>
+                </div>
+                <div class="flex items-center space-x-6">
+                    <button onclick="scrollToSection('vision')" class="text-sm font-medium text-slate-500 hover:text-blue-600 transition-colors">Vision</button>
+                    <button onclick="scrollToSection('onboarding')" class="text-sm font-medium text-slate-500 hover:text-blue-600 transition-colors">Onboarding</button>
+                    <button onclick="scrollToSection('architecture')" class="text-sm font-medium text-slate-500 hover:text-blue-600 transition-colors">Architecture & Tools</button>
+                    <div class="h-4 w-px bg-slate-200"></div>
+                    <span class="text-xs font-mono text-slate-400">STATUS: APPROVED</span>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-12">
+
+        <!-- Section 1: Product Vision & Personas -->
+        <section id="vision" class="scroll-mt-20">
+            <div class="mb-6">
+                <h2 class="text-2xl font-bold text-slate-900 flex items-center gap-2">
+                    <span class="text-blue-600 text-xl">◉</span> Product Vision
+                </h2>
+                <p class="text-slate-600 mt-2 max-w-3xl">
+                    Avaia is a cross-platform desktop application teaching programming through AI-powered, evidence-based pedagogy (Spaced Repetition & Productive Failure). 
+                    It operates on a local-first, "Bring Your Own Key" architecture.
+                </p>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <!-- Personas Cards -->
+                <div class="lg:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-6" id="persona-container">
+                    <!-- Populated by JS -->
+                </div>
+
+                <!-- Stats / Chart -->
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 flex flex-col">
+                    <h3 class="text-lg font-semibold text-slate-800 mb-4">Target Audience Needs</h3>
+                    <div class="flex-grow flex items-center justify-center bg-slate-50 rounded-lg p-2">
+                        <div class="chart-container">
+                            <canvas id="personaChart"></canvas>
+                        </div>
+                    </div>
+                    <p class="text-xs text-slate-500 mt-3 text-center">Comparing primary motivators across user segments.</p>
+                </div>
+            </div>
+        </section>
+
+        <hr class="border-slate-200">
+
+        <!-- Section 2: Onboarding Flow -->
+        <section id="onboarding" class="scroll-mt-20">
+            <div class="mb-6 flex flex-col md:flex-row md:items-end justify-between gap-4">
+                <div>
+                    <h2 class="text-2xl font-bold text-slate-900 flex items-center gap-2">
+                        <span class="text-blue-600 text-xl">▶</span> Onboarding Experience
+                    </h2>
+                    <p class="text-slate-600 mt-2">Target: "Launch to First Line of Code" in under 5 minutes.</p>
+                </div>
+                <div class="bg-blue-50 text-blue-700 px-4 py-2 rounded-full text-sm font-semibold border border-blue-100">
+                    Est. Total Time: 3m 38s
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <!-- Step Visualizer -->
+                <div class="lg:col-span-2 bg-white rounded-xl shadow-sm border border-slate-200 p-8">
+                    <div class="relative">
+                        <!-- Progress Line -->
+                        <div class="absolute left-6 top-0 bottom-0 w-0.5 bg-slate-100"></div>
+                        
+                        <!-- Steps Container -->
+                        <div id="onboarding-steps" class="space-y-8 relative">
+                            <!-- Populated by JS -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Time Budget Chart -->
+                <div class="space-y-6">
+                     <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                        <h3 class="text-lg font-semibold text-slate-800 mb-4">Time Budget Analysis</h3>
+                        <div class="chart-container h-64">
+                            <canvas id="onboardingChart"></canvas>
+                        </div>
+                    </div>
+                    
+                    <div id="step-preview" class="bg-slate-900 rounded-xl shadow-lg border border-slate-800 p-6 text-slate-300 font-mono text-sm min-h-[200px] flex flex-col justify-center items-center text-center transition-all">
+                        <span class="text-slate-500 mb-2">UI Preview</span>
+                        <div class="text-white font-bold text-lg mb-2" id="preview-title">Select a step</div>
+                        <div class="text-slate-400 text-xs" id="preview-desc">Click the timeline to see step details.</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <hr class="border-slate-200">
+
+        <!-- Section 3: Architecture & MCP Tools -->
+        <section id="architecture" class="scroll-mt-20">
+            <div class="mb-6">
+                <h2 class="text-2xl font-bold text-slate-900 flex items-center gap-2">
+                    <span class="text-blue-600 text-xl">❖</span> System Architecture & MCP Tools
+                </h2>
+                <p class="text-slate-600 mt-2">
+                    Explore the 23 Model Context Protocol (MCP) tools that power the AI agent's ability to interact with the database, session state, and spaced repetition engine.
+                </p>
+            </div>
+
+            <div class="grid grid-cols-1 xl:grid-cols-4 gap-8">
+                
+                <!-- Sidebar: Features / Categories -->
+                <div class="xl:col-span-1 space-y-4">
+                    <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden sticky top-24">
+                        <div class="bg-slate-50 px-4 py-3 border-b border-slate-200 font-semibold text-slate-700">
+                            Feature Modules
+                        </div>
+                        <div id="feature-list" class="divide-y divide-slate-100">
+                            <!-- Populated by JS -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Main Content: Tool Explorer -->
+                <div class="xl:col-span-3 space-y-6">
+                    
+                    <!-- Tools Grid -->
+                    <div id="tools-grid" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <!-- Populated by JS -->
+                    </div>
+
+                    <!-- Tool Detail View (Initially Hidden) -->
+                    <div id="tool-detail-panel" class="hidden bg-white rounded-xl shadow-lg border border-blue-200 overflow-hidden ring-4 ring-blue-50 transition-all">
+                        <!-- Header -->
+                        <div class="bg-slate-50 border-b border-slate-200 px-6 py-4 flex justify-between items-center">
+                            <div>
+                                <h3 id="detail-name" class="text-xl font-bold text-slate-900 font-mono">tool_name()</h3>
+                                <p id="detail-trigger" class="text-sm text-blue-600 font-medium mt-1">Trigger: ...</p>
+                            </div>
+                            <button onclick="closeDetail()" class="text-slate-400 hover:text-slate-600 text-2xl font-bold">&times;</button>
+                        </div>
+                        
+                        <!-- Body -->
+                        <div class="p-6 space-y-6">
+                            <!-- Specs Grid -->
+                            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                                <div>
+                                    <h4 class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">TypeScript Signature</h4>
+                                    <div class="code-block p-3 rounded-lg text-xs overflow-x-auto custom-scrollbar border border-slate-700">
+                                        <pre id="detail-ts">...</pre>
+                                    </div>
+                                </div>
+                                <div>
+                                    <h4 class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Zod Validation Schema</h4>
+                                    <div class="code-block p-3 rounded-lg text-xs overflow-x-auto custom-scrollbar border border-slate-700">
+                                        <pre id="detail-zod">...</pre>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Database Logic -->
+                            <div>
+                                <h4 class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Database Operations (SQL)</h4>
+                                <div class="code-block p-3 rounded-lg text-xs overflow-x-auto custom-scrollbar border border-slate-700">
+                                    <pre id="detail-sql">...</pre>
+                                </div>
+                            </div>
+
+                            <!-- AI Messaging -->
+                            <div class="bg-blue-50 rounded-lg p-4 border border-blue-100">
+                                <h4 class="text-xs font-bold text-blue-800 uppercase tracking-wider mb-1">AI Behavior</h4>
+                                <p id="detail-ai" class="text-sm text-blue-900 italic">...</p>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </section>
+        
+        <footer class="text-center text-slate-400 text-sm py-8 border-t border-slate-200 mt-12">
+            <p>Generated for Avaia PRD Review • v2.0.0</p>
+        </footer>
+
+    </main>
+
+    <script>
+        // --- DATA SOURCE ---
+        // Extracted from the uploaded JSON and Markdown files
+        
+        const appData = {
+            personas: [
+                {
+                    role: "Self-Directed Learner",
+                    goal: "Job-ready without bootcamps",
+                    pain_points: ["Tutorial hell", "Forgets syntax", "Sycophantic AI", "Cost barrier"],
+                    icon: "🚀"
+                },
+                {
+                    role: "Homeschool Parent",
+                    goal: "High-quality CS education for kids",
+                    pain_points: ["Not a programmer", "Need structured curriculum", "Want offline/safe env"],
+                    icon: "🏡"
+                }
+            ],
+            onboarding: [
+                { step: 1, title: "Welcome Screen", time: 5, timeLabel: "5 sec", desc: "First launch detection. Value prop display.", ui: "Simple 'Get Started' CTA. Clean Hero." },
+                { step: 2, title: "Create Profile", time: 30, timeLabel: "30 sec", desc: "Local DB entry. Name & Avatar.", ui: "Form: Name input, Avatar picker." },
+                { step: 3, title: "API Key Setup", time: 120, timeLabel: "2 min", desc: "Anthropic Key validation. Encryption.", ui: "Key Input field with validation check." },
+                { step: 4, title: "Teaching Method", time: 60, timeLabel: "1 min", desc: "Pedagogy selection (Socratic vs Direct).", ui: "Card selection: 'Guide Me' vs 'Explain First'." },
+                { step: 5, title: "Start Session", time: 3, timeLabel: "Instant", desc: "Transition to IDE.", ui: "Loading spinner -> Main Workspace." }
+            ],
+            features: [
+                {
+                    id: "FEAT-004", name: "Session Lifecycle", tools: [
+                        { name: "start_session", trigger: "User clicks 'Start'", ts: "start_session(profile_id: string): Promise<Session>", sql: "INSERT INTO session...", ai: "Initialize context." },
+                        { name: "end_session", trigger: "User clicks 'End' or Timeout", ts: "end_session(session_id: string, summary: string)", sql: "UPDATE session SET end_time...", ai: "Summarize learnings." },
+                        { name: "log_activity", trigger: "Keystroke / Interaction", ts: "log_activity(type: string, data: any)", sql: "INSERT INTO activity_log...", ai: "Silent tracking." },
+                        { name: "get_session_context", trigger: "Resume / Crash recovery", ts: "get_session_context(limit: number)", sql: "SELECT * FROM activity_log...", ai: "Restore state." }
+                    ]
+                },
+                {
+                    id: "FEAT-005", name: "Spaced Repetition (FSRS)", tools: [
+                        { name: "schedule_review", trigger: "Concept learned", ts: "schedule_review(card_id: string, rating: number)", sql: "UPDATE cards SET stability=...", ai: "Update FSRS memory model." },
+                        { name: "get_due_cards", trigger: "Session Start", ts: "get_due_cards(profile_id: string): Card[]", sql: "SELECT * FROM cards WHERE due < now...", ai: "Fetch review items." }
+                    ]
+                },
+                {
+                    id: "FEAT-007", name: "Project Tracking", tools: [
+                        { name: "update_milestone", trigger: "Test passing", ts: "update_milestone(id: string, status: 'completed')", sql: "UPDATE milestone...", ai: "Celebrate progress." },
+                        { name: "get_project_status", trigger: "User asks 'What's next?'", ts: "get_project_status(project_id: string)", sql: "SELECT * FROM milestones...", ai: "Show roadmap." },
+                        { name: "unlock_next_project", trigger: "All milestones done", ts: "unlock_next_project(current: string)", sql: "INSERT INTO user_project...", ai: "Suggest next challenge." }
+                    ]
+                },
+                {
+                    id: "FEAT-032", name: "Intervention Ladder", tools: [
+                        { name: "defer_concept", trigger: "Stage 6 failure", ts: "defer_concept(concept_id: string, retry: number)", sql: "UPDATE concept_memory SET state='deferred'...", ai: "Let's revisit this later." },
+                        { name: "trigger_intervention", trigger: "Stuck detection", ts: "trigger_intervention(level: number, strategy: string)", sql: "INSERT INTO intervention...", ai: "Provide hint." },
+                        { name: "escalate_help", trigger: "Repeated errors", ts: "escalate_help(session_id: string)", sql: "UPDATE session_state...", ai: "Move from Socratic to Direct." }
+                    ]
+                },
+                {
+                    id: "FEAT-006", name: "Diagnostics", tools: [
+                        { name: "present_quiz", trigger: "New Concept", ts: "present_quiz(concept_id: string)", sql: "SELECT * FROM questions...", ai: "Assess prior knowledge." },
+                        { name: "record_quiz_result", trigger: "User answer", ts: "record_quiz_result(q_id: string, correct: boolean)", sql: "INSERT INTO results...", ai: "Adjust difficulty." }
+                    ]
+                }
+            ]
+        };
+
+        // --- STATE MANAGEMENT ---
+        let currentFeatureIndex = 0;
+        let selectedStep = 0;
+
+        // --- INITIALIZATION ---
+        document.addEventListener('DOMContentLoaded', () => {
+            renderPersonas();
+            renderPersonaChart();
+            renderOnboarding();
+            renderOnboardingChart();
+            renderFeaturesList();
+            renderTools(0); // Default to first feature
+        });
+
+        // --- RENDERERS ---
+
+        function renderPersonas() {
+            const container = document.getElementById('persona-container');
+            container.innerHTML = appData.personas.map(p => `
+                <div class="bg-white rounded-xl p-6 shadow-sm border border-slate-200 interactive-card">
+                    <div class="text-4xl mb-4">${p.icon}</div>
+                    <h3 class="text-xl font-bold text-slate-900 mb-2">${p.role}</h3>
+                    <p class="text-sm font-semibold text-blue-600 mb-3 uppercase tracking-wide">Goal: ${p.goal}</p>
+                    <div class="space-y-2">
+                        <p class="text-xs font-bold text-slate-400 uppercase">Pain Points</p>
+                        <ul class="text-sm text-slate-600 space-y-1">
+                            ${p.pain_points.map(pp => `<li class="flex items-start gap-2"><span class="text-red-400 mt-1">×</span> ${pp}</li>`).join('')}
+                        </ul>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function renderPersonaChart() {
+            const ctx = document.getElementById('personaChart').getContext('2d');
+            new Chart(ctx, {
+                type: 'radar',
+                data: {
+                    labels: ['Cost Sensitive', 'Structure Need', 'Offline Req', 'Job Focus', 'Child Safety'],
+                    datasets: [{
+                        label: 'Self-Directed',
+                        data: [90, 40, 20, 100, 10],
+                        fill: true,
+                        backgroundColor: 'rgba(37, 99, 235, 0.2)',
+                        borderColor: 'rgb(37, 99, 235)',
+                        pointBackgroundColor: 'rgb(37, 99, 235)',
+                    }, {
+                        label: 'HS Parent',
+                        data: [50, 95, 80, 20, 100],
+                        fill: true,
+                        backgroundColor: 'rgba(16, 185, 129, 0.2)',
+                        borderColor: 'rgb(16, 185, 129)',
+                        pointBackgroundColor: 'rgb(16, 185, 129)',
+                    }]
+                },
+                options: {
+                    maintainAspectRatio: false,
+                    scales: {
+                        r: {
+                            angleLines: { display: true },
+                            suggestedMin: 0,
+                            suggestedMax: 100
+                        }
+                    },
+                    plugins: {
+                        legend: { position: 'bottom' }
+                    }
+                }
+            });
+        }
+
+        function renderOnboarding() {
+            const container = document.getElementById('onboarding-steps');
+            container.innerHTML = appData.onboarding.map((step, index) => `
+                <div class="relative pl-12 cursor-pointer group" onclick="selectOnboardingStep(${index})">
+                    <div class="absolute left-0 top-1 w-12 flex justify-center">
+                        <div class="h-6 w-6 rounded-full border-2 ${index === 0 ? 'bg-blue-600 border-blue-600 text-white' : 'bg-white border-slate-300 text-slate-500'} font-bold text-xs flex items-center justify-center transition-colors group-hover:border-blue-400">
+                            ${step.step}
+                        </div>
+                    </div>
+                    <div>
+                        <h4 class="text-md font-bold text-slate-900 group-hover:text-blue-600 transition-colors">${step.title}</h4>
+                        <div class="flex items-center gap-3 mt-1">
+                            <span class="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded border border-slate-200">⏳ ${step.timeLabel}</span>
+                            <p class="text-sm text-slate-500 line-clamp-1">${step.desc}</p>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+            
+            // Init first step
+            selectOnboardingStep(0);
+        }
+
+        function selectOnboardingStep(index) {
+            selectedStep = index;
+            const step = appData.onboarding[index];
+            
+            // Update UI Visuals
+            const dots = document.querySelectorAll('#onboarding-steps .rounded-full');
+            dots.forEach((d, i) => {
+                if (i === index) {
+                    d.className = "h-6 w-6 rounded-full border-2 bg-blue-600 border-blue-600 text-white font-bold text-xs flex items-center justify-center transition-colors";
+                } else {
+                    d.className = "h-6 w-6 rounded-full border-2 bg-white border-slate-300 text-slate-500 font-bold text-xs flex items-center justify-center transition-colors group-hover:border-blue-400";
+                }
+            });
+
+            // Update Preview Box
+            const previewBox = document.getElementById('step-preview');
+            const title = document.getElementById('preview-title');
+            const desc = document.getElementById('preview-desc');
+            
+            title.textContent = step.title;
+            desc.textContent = step.ui;
+            
+            // Simple visual feedback animation
+            previewBox.classList.remove('ring-2', 'ring-blue-500');
+            void previewBox.offsetWidth; // trigger reflow
+            previewBox.classList.add('ring-2', 'ring-blue-500');
+        }
+
+        function renderOnboardingChart() {
+            const ctx = document.getElementById('onboardingChart').getContext('2d');
+            const times = appData.onboarding.map(s => s.time);
+            const labels = appData.onboarding.map(s => `Step ${s.step}`);
+            
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Seconds',
+                        data: times,
+                        backgroundColor: times.map(t => t > 60 ? '#f59e0b' : '#3b82f6'),
+                        borderRadius: 4
+                    }]
+                },
+                options: {
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: (ctx) => `${ctx.raw} seconds`
+                            }
+                        }
+                    },
+                    scales: {
+                        y: { beginAtZero: true, title: { display: true, text: 'Seconds' } }
+                    }
+                }
+            });
+        }
+
+        function renderFeaturesList() {
+            const container = document.getElementById('feature-list');
+            container.innerHTML = appData.features.map((f, i) => `
+                <button onclick="renderTools(${i})" class="w-full text-left px-4 py-3 text-sm font-medium border-b border-slate-50 transition-colors flex justify-between items-center group ${i === 0 ? 'bg-blue-50 text-blue-700' : 'text-slate-600 hover:bg-slate-50'}">
+                    <span>${f.name}</span>
+                    <span class="bg-slate-200 text-slate-600 text-[10px] px-1.5 py-0.5 rounded-full group-hover:bg-blue-200 group-hover:text-blue-800">${f.tools.length}</span>
+                </button>
+            `).join('');
+        }
+
+        function renderTools(featureIndex) {
+            // Update active state in sidebar
+            const buttons = document.querySelectorAll('#feature-list button');
+            buttons.forEach((btn, i) => {
+                if (i === featureIndex) {
+                    btn.className = "w-full text-left px-4 py-3 text-sm font-medium border-b border-slate-50 transition-colors flex justify-between items-center group bg-blue-50 text-blue-700 border-l-4 border-l-blue-600";
+                } else {
+                    btn.className = "w-full text-left px-4 py-3 text-sm font-medium border-b border-slate-50 transition-colors flex justify-between items-center group text-slate-600 hover:bg-slate-50 border-l-4 border-l-transparent";
+                }
+            });
+
+            currentFeatureIndex = featureIndex;
+            const feature = appData.features[featureIndex];
+            const grid = document.getElementById('tools-grid');
+            
+            // Hide detail view when switching category
+            document.getElementById('tool-detail-panel').classList.add('hidden');
+            grid.classList.remove('hidden');
+
+            grid.innerHTML = feature.tools.map((tool, i) => `
+                <div onclick="showToolDetail(${featureIndex}, ${i})" class="bg-white p-5 rounded-lg border border-slate-200 hover:border-blue-400 hover:shadow-md cursor-pointer transition-all group h-full flex flex-col justify-between">
+                    <div>
+                        <div class="flex items-center gap-2 mb-2">
+                            <span class="text-xs font-mono bg-slate-100 text-slate-500 px-1.5 rounded">MCP</span>
+                            <h4 class="font-bold text-slate-800 font-mono text-sm break-all group-hover:text-blue-600">${tool.name}</h4>
+                        </div>
+                        <p class="text-xs text-slate-500 mb-3 line-clamp-2">${tool.ai}</p>
+                    </div>
+                    <div class="text-xs text-slate-400 flex items-center gap-1 border-t border-slate-50 pt-3">
+                        <span class="text-blue-400">⚡</span> ${tool.trigger}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function showToolDetail(featureIdx, toolIdx) {
+            const tool = appData.features[featureIdx].tools[toolIdx];
+            
+            document.getElementById('detail-name').textContent = tool.name;
+            document.getElementById('detail-trigger').textContent = "Trigger: " + tool.trigger;
+            document.getElementById('detail-ts').textContent = tool.ts;
+            document.getElementById('detail-zod').textContent = `z.object({ \n  // inferred from params \n})`; // Placeholder for brevity
+            document.getElementById('detail-sql').textContent = tool.sql;
+            document.getElementById('detail-ai').textContent = tool.ai;
+
+            document.getElementById('tool-detail-panel').classList.remove('hidden');
+            
+            // Smooth scroll to detail
+            document.getElementById('tool-detail-panel').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+
+        function closeDetail() {
+            document.getElementById('tool-detail-panel').classList.add('hidden');
+        }
+
+        function scrollToSection(id) {
+            document.getElementById(id).scrollIntoView({ behavior: 'smooth' });
+        }
+
+    </script>
+</body>
+</html>

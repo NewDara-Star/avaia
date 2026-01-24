@@ -1,0 +1,139 @@
+# Avaia GUI Test Container
+# Runs Flask server for full vertical testing in isolated environment
+#
+# Usage (from project root):
+#   docker build -f docker/Dockerfile.gui -t avaia-gui-test .
+#   docker run -p 5000:5000 avaia-gui-test
+#   Then open http://localhost:5000/setup in browser
+
+FROM python:3.12-slim
+
+# Install system dependencies including Node.js for seeding
+RUN apt-get update && apt-get install -y \
+    curl \
+    gnupg \
+    && curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
+    && apt-get install -y nodejs \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create test user
+RUN useradd -m -s /bin/bash testuser
+
+# Set working directory
+WORKDIR /app
+
+# Copy GUI files
+COPY gui/setup_wizard.py /app/
+COPY gui/server_webview.py /app/
+COPY gui/templates /app/templates/
+COPY gui/static /app/static/
+
+# Copy migrations for database initialization
+COPY src/server/db/migrations /app/migrations/
+
+# Copy seed script and related files
+COPY src/server/seed.ts /app/seed.ts
+COPY src/server/db /app/db/
+COPY scripts/seed.ts /app/scripts/seed.ts
+COPY package.json /app/package.json
+COPY tsconfig.json /app/tsconfig.json
+
+# Install Node.js dependencies for seeding
+RUN npm install --production 2>/dev/null || true
+
+# Install Python dependencies
+RUN pip install --no-cache-dir \
+    flask \
+    flask-socketio \
+    pywebview
+
+# Create a minimal server that just runs Flask (no webview)
+RUN cat > /app/server_flask_only.py << 'EOF'
+"""
+Flask-only server for Docker testing (no webview).
+This allows testing the setup wizard in a browser.
+"""
+import os
+import sys
+
+# Set up paths
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+if BASE_DIR not in sys.path:
+    sys.path.insert(0, BASE_DIR)
+
+from flask import Flask, render_template, redirect, request, jsonify
+from setup_wizard import (
+    preflight_check, install_claude_cli, configure_avaia_mcp,
+    initialize_database, login_claude, set_api_key
+)
+
+app = Flask(__name__,
+            template_folder=os.path.join(BASE_DIR, 'templates'),
+            static_folder=os.path.join(BASE_DIR, 'static'))
+app.config['SECRET_KEY'] = 'avaia-test'
+
+
+@app.route('/')
+def index():
+    status = preflight_check()
+    if not status.all_ready:
+        return redirect('/setup')
+    return "Setup complete - would show chat here"
+
+
+@app.route('/setup')
+def setup():
+    return render_template('setup.html')
+
+
+@app.route('/setup/status')
+def setup_status():
+    status = preflight_check()
+    return jsonify(status.to_dict())
+
+
+@app.route('/setup/install/<component>', methods=['POST'])
+def install_component(component):
+    if component == 'claude_cli':
+        success, msg = install_claude_cli()
+    elif component == 'avaia_mcp':
+        success, msg = configure_avaia_mcp()
+    elif component == 'database':
+        success, msg = initialize_database()
+    else:
+        return jsonify({"success": False, "error": f"Unknown component: {component}"})
+    return jsonify({"success": success, "message": msg if success else None, "error": msg if not success else None})
+
+
+@app.route('/setup/auth/login', methods=['POST'])
+def auth_login():
+    success, msg = login_claude()
+    return jsonify({"success": success, "message": msg if success else None, "error": msg if not success else None})
+
+
+@app.route('/setup/auth/byok', methods=['POST'])
+def auth_byok():
+    data = request.get_json()
+    api_key = data.get('api_key', '')
+    success, msg = set_api_key(api_key)
+    return jsonify({"success": success, "message": msg if success else None, "error": msg if not success else None})
+
+
+if __name__ == '__main__':
+    print("Starting Avaia Setup Test Server on http://0.0.0.0:5000")
+    print("Fresh user environment - nothing installed")
+    app.run(host='0.0.0.0', port=5000, debug=True)
+EOF
+
+# Update migrations path in setup_wizard.py to look in /app/migrations
+RUN sed -i 's|Path(__file__).parent.parent / "src" / "server" / "db" / "migrations"|Path("/app/migrations")|g' /app/setup_wizard.py
+
+# Switch to test user for realistic permissions
+USER testuser
+ENV HOME=/home/testuser
+
+# Expose Flask port
+EXPOSE 5000
+
+# Run Flask server
+CMD ["python", "/app/server_flask_only.py"]

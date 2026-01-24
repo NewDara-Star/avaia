@@ -1,0 +1,89 @@
+{
+  "$schema": "./track-schema.json",
+  "_comment": "This is a template for creating new learning tracks. Copy this file and fill in your track data.",
+
+  "track": {
+    "id": "your-track-id",
+    "name": "Your Track Name",
+    "description": "A clear description of what learners will achieve by completing this track.",
+    "language": null,
+    "domain": "your-domain",
+    "difficulty": "beginner"
+  },
+
+  "concepts": [
+    {
+      "id": "concept-1",
+      "name": "First Concept",
+      "category": "Foundations",
+      "cluster": null,
+      "prerequisites": [],
+      "sandbox_id": null
+    },
+    {
+      "id": "concept-2",
+      "name": "Second Concept",
+      "category": "Foundations",
+      "cluster": null,
+      "prerequisites": ["concept-1"],
+      "sandbox_id": null
+    }
+  ],
+
+  "projects": [
+    {
+      "id": "project-1",
+      "sequence_order": 1,
+      "name": "First Project",
+      "description": "Description of what the learner builds.",
+      "estimated_hours": 10,
+      "milestones": [
+        {"id": 1, "name": "Setup", "description": "Get the project started"},
+        {"id": 2, "name": "Core Feature", "description": "Build the main feature"},
+        {"id": 3, "name": "Polish", "description": "Refine and complete"}
+      ],
+      "milestone_concepts": [
+        {"milestone": 1, "concept_id": "concept-1", "relationship": "introduces"},
+        {"milestone": 2, "concept_id": "concept-2", "relationship": "introduces"}
+      ]
+    }
+  ],
+
+  "misconceptions": [
+    {
+      "id": "misc-001",
+      "concept_id": "concept-1",
+      "name": "Common Misunderstanding",
+      "description": "What learners often get wrong",
+      "trigger_answer": "The wrong answer that reveals this misconception",
+      "remediation_strategy": "How to fix this misunderstanding",
+      "contrasting_case": null
+    }
+  ],
+
+  "diagnostic_questions": [
+    {
+      "id": "diag-001",
+      "concept_id": "concept-1",
+      "code_snippet": "// Code or scenario to analyze",
+      "prompt": "What happens when you run this?",
+      "correct_answer": "The correct answer",
+      "distractors": [
+        {"answer": "Wrong answer 1", "misconception_id": "misc-001"},
+        {"answer": "Wrong answer 2", "misconception_id": null}
+      ]
+    }
+  ],
+
+  "sandboxes": [
+    {
+      "id": "sandbox-concept-1",
+      "concept_id": "concept-1",
+      "name": "Sandbox Exercise Name",
+      "description": "What the learner should try",
+      "starter_code": "// Starting code for the exercise",
+      "expected_failure": "What will go wrong",
+      "learning_goal": "Why this failure is instructive"
+    }
+  ]
+}

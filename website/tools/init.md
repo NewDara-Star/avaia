@@ -27,3 +27,15 @@ arela init
 ## Notes
 - Indexing requires Ollama; init will attempt to start it.
 - After init, paste your PRD and stack into `spec/prd.json` and `spec/stack.json`.
+
+## Troubleshooting (Native Module)
+If graph indexing fails with a `better-sqlite3` architecture error, rebuild the native module in the Arela repo:
+
+```bash
+cd /Users/Star/arela
+npm rebuild better-sqlite3 --build-from-source
+```
+
+Then re-run `arela init` in your target repo.
+
+This only affects Arela’s internal graph DB (`.arela/graph.db`), not your app’s database.

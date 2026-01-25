@@ -130,3 +130,13 @@ Treat these as source-of-truth inputs for planning and tickets.
 
 ### Privacy Defaults
 `arela init` creates a `.arelaignore` file (like `.gitignore`) with safe defaults for secrets and build output. Add any private docs there to exclude them from indexing.
+
+### Troubleshooting: better-sqlite3 (Graph Index)
+If you see an architecture error during `arela init`, rebuild the native module in the Arela repo:
+
+```bash
+cd /Users/Star/arela
+npm rebuild better-sqlite3 --build-from-source
+```
+
+Then re-run `arela init` in your target repo. This only affects Arela’s internal graph DB (`.arela/graph.db`).

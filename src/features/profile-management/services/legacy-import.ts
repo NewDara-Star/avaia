@@ -70,7 +70,7 @@ function listDirs(p: string): string[] {
 }
 
 function readProfileIdFromProgressDb(progressDbPath: string): string | null {
-  let db: Database.Database | null = null;
+  let db: Database | null = null;
   try {
     db = new Database(progressDbPath, { readonly: true });
     const row = db.prepare("SELECT id FROM profile LIMIT 1").get() as

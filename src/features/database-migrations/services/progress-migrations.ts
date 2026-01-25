@@ -29,7 +29,7 @@ import Database from "better-sqlite3";
 type Migration = {
   id: string;
   description: string;
-  run: (db: Database.Database) => void;
+  run: (db: Database) => void;
 };
 
 /**
@@ -49,14 +49,14 @@ function assertWhitelistedTable(table: string): void {
   }
 }
 
-function tableExists(db: Database.Database, table: string): boolean {
+function tableExists(db: Database, table: string): boolean {
   const row = db
     .prepare("SELECT name FROM sqlite_master WHERE type='table' AND name=?")
     .get(table);
   return !!row;
 }
 
-function hasColumn(db: Database.Database, table: string, column: string): boolean {
+function hasColumn(db: Database, table: string, column: string): boolean {
   assertWhitelistedTable(table);
   if (!tableExists(db, table)) return false;
 
@@ -66,7 +66,7 @@ function hasColumn(db: Database.Database, table: string, column: string): boolea
   return cols.some((c) => c.name === column);
 }
 
-function ensureMigrationsTable(db: Database.Database): void {
+function ensureMigrationsTable(db: Database): void {
   db.prepare(`
     CREATE TABLE IF NOT EXISTS _migrations (
       id TEXT PRIMARY KEY,
@@ -77,7 +77,7 @@ function ensureMigrationsTable(db: Database.Database): void {
 }
 
 function applyMigration(
-  db: Database.Database,
+  db: Database,
   m: Migration,
   appVersion?: string
 ): void {

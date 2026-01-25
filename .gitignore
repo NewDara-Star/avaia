@@ -11,3 +11,5 @@ data/
 research/
 docs/
 .aider*
+.arela/
+.mcp.json

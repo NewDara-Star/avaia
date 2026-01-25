@@ -1,0 +1,15 @@
+# Arela ignore (privacy + noise)
+.env
+.env.*
+**/*.pem
+**/*.key
+**/.aws/**
+**/.ssh/**
+**/*token*
+**/*.sql
+**/*.dump
+**/*.bak
+**/*.sqlite
+**/*.db
+
+# Add private docs or folders below

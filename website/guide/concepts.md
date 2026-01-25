@@ -81,6 +81,8 @@ Each slice has:
 - `*.ts` — Implementation
 - Its own types and logic
 
+Arela also generates `REPO_SNAPSHOT.md` as a live, auto-updated overview of the repo.
+
 ## The Feedback Loop
 
 ```

@@ -126,6 +126,7 @@ Treat these as source-of-truth inputs for planning and tickets.
 
 - [View Dashboard](/dashboard) — Live repo dashboard (requires `website/` scaffold + `dashboard.json` export)
 - [Core Concepts](/guide/concepts) — Understand the philosophy
+- [Repo Snapshot](/guide/repo-snapshot) — Auto-generated repo summary
 - [Tools Reference](/tools/) — Learn each MCP tool
 
 ### Privacy Defaults
@@ -140,3 +141,24 @@ npm rebuild better-sqlite3 --build-from-source
 ```
 
 Then re-run `arela init` in your target repo. This only affects Arela’s internal graph DB (`.arela/graph.db`).
+
+## Run the Dashboard
+The dashboard site lives under `website/` in each repo. Run it from that folder:
+
+```bash
+cd website
+npm install
+npm run dev
+```
+
+Or from repo root:
+
+```bash
+npm --prefix website run dev
+```
+
+To start the dev server automatically during init:
+
+```bash
+arela init --dashboard
+```

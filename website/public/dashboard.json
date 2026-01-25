@@ -1,175 +1,281 @@
 {
-  "generated": "2026-01-04T13:26:37.309Z",
+  "generated": "2026-01-25T16:36:45.368Z",
+  "errors": [],
   "stats": {
-    "files": 26,
-    "links": 15
+    "files": 40,
+    "links": 1
   },
   "nodes": [
     {
-      "id": "slices/context/types.ts",
-      "group": "slices"
+      "id": "archive/bin/avaia.ts",
+      "group": "archive"
     },
     {
-      "id": "slices/graph/db.ts",
-      "group": "slices"
+      "id": "archive/gui/static/shared.js",
+      "group": "archive"
     },
     {
-      "id": "slices/graph/gatekeeper.ts",
-      "group": "slices"
+      "id": "archive/gui/static/socket.io.min.js",
+      "group": "archive"
     },
     {
-      "id": "slices/graph/indexer.ts",
-      "group": "slices"
+      "id": "archive/gui/venv/lib/python3.14/site-packages/webview/js/api.js",
+      "group": "archive"
     },
     {
-      "id": "slices/graph/schema.ts",
-      "group": "slices"
+      "id": "archive/gui/venv/lib/python3.14/site-packages/webview/js/customize.js",
+      "group": "archive"
     },
     {
-      "id": "slices/memory/logic.ts",
-      "group": "slices"
+      "id": "archive/gui/venv/lib/python3.14/site-packages/webview/js/finish.js",
+      "group": "archive"
     },
     {
-      "id": "slices/memory/scratchpad.ts",
-      "group": "slices"
+      "id": "archive/gui/venv/lib/python3.14/site-packages/webview/js/lib/dom_json.js",
+      "group": "archive"
     },
     {
-      "id": "slices/verification/gatekeeper.ts",
-      "group": "slices"
+      "id": "archive/gui/venv/lib/python3.14/site-packages/webview/js/lib/polyfill.js",
+      "group": "archive"
     },
     {
-      "id": "src/cli.ts",
+      "id": "archive/gui/venv/lib/python3.14/site-packages/webview/js/state.js",
+      "group": "archive"
+    },
+    {
+      "id": "archive/gui/venv/lib/python3.14/site-packages/werkzeug/debug/shared/debugger.js",
+      "group": "archive"
+    },
+    {
+      "id": "archive/scripts/generate-seed-sql.ts",
+      "group": "archive"
+    },
+    {
+      "id": "archive/scripts/generate-track-sql.ts",
+      "group": "archive"
+    },
+    {
+      "id": "archive/scripts/migrate.ts",
+      "group": "archive"
+    },
+    {
+      "id": "archive/scripts/seed-all-tracks.ts",
+      "group": "archive"
+    },
+    {
+      "id": "archive/scripts/seed-avaia-core.ts",
+      "group": "archive"
+    },
+    {
+      "id": "archive/scripts/seed-c-systems.ts",
+      "group": "archive"
+    },
+    {
+      "id": "archive/scripts/seed-cs-theory.ts",
+      "group": "archive"
+    },
+    {
+      "id": "archive/scripts/seed-dsa-curriculum.ts",
+      "group": "archive"
+    },
+    {
+      "id": "archive/scripts/seed-js-curriculum.ts",
+      "group": "archive"
+    },
+    {
+      "id": "archive/scripts/seed-ml-engineering.ts",
+      "group": "archive"
+    },
+    {
+      "id": "archive/scripts/seed-python-data.ts",
+      "group": "archive"
+    },
+    {
+      "id": "archive/scripts/seed-software-engineering.ts",
+      "group": "archive"
+    },
+    {
+      "id": "archive/scripts/seed.ts",
+      "group": "archive"
+    },
+    {
+      "id": "archive/scripts/test-all-tools.ts",
+      "group": "archive"
+    },
+    {
+      "id": "archive/src/client/index.ts",
+      "group": "archive"
+    },
+    {
+      "id": "archive/src/server/db/index.ts",
+      "group": "archive"
+    },
+    {
+      "id": "archive/src/server/index.ts",
+      "group": "archive"
+    },
+    {
+      "id": "archive/src/server/lib/emotions.ts",
+      "group": "archive"
+    },
+    {
+      "id": "archive/src/server/lib/fsrs.ts",
+      "group": "archive"
+    },
+    {
+      "id": "archive/src/server/seed.ts",
+      "group": "archive"
+    },
+    {
+      "id": "archive/src/server/tools/content.ts",
+      "group": "archive"
+    },
+    {
+      "id": "archive/src/server/tools/project.ts",
+      "group": "archive"
+    },
+    {
+      "id": "archive/src/server/tools/sandbox.ts",
+      "group": "archive"
+    },
+    {
+      "id": "archive/src/server/tools/session.ts",
+      "group": "archive"
+    },
+    {
+      "id": "archive/src/server/tools/srs.ts",
+      "group": "archive"
+    },
+    {
+      "id": "archive/src/server/tools/track.ts",
+      "group": "archive"
+    },
+    {
+      "id": "archive/src/server/tools/verify.ts",
+      "group": "archive"
+    },
+    {
+      "id": "archive/src/server/types/index.ts",
+      "group": "archive"
+    },
+    {
+      "id": "src/features/database-migrations/services/progress-migrations.ts",
       "group": "src"
     },
     {
-      "id": "src/mcp/server.ts",
+      "id": "src/features/profile-management/services/legacy-import.ts",
       "group": "src"
-    },
-    {
-      "id": "test_graph_rpc.js",
-      "group": "test_graph_rpc.js"
-    },
-    {
-      "id": "verify_graph.js",
-      "group": "verify_graph.js"
-    },
-    {
-      "id": "verify_memory.js",
-      "group": "verify_memory.js"
-    },
-    {
-      "id": "verify_verifier.js",
-      "group": "verify_verifier.js"
-    },
-    {
-      "id": "bootstrap_graph.js",
-      "group": "bootstrap_graph.js"
-    },
-    {
-      "id": "slices/focus/ops.ts",
-      "group": "slices"
-    },
-    {
-      "id": "slices/graph/ops.ts",
-      "group": "slices"
-    },
-    {
-      "id": "slices/shared/openai.ts",
-      "group": "slices"
-    },
-    {
-      "id": "slices/translate/ops.ts",
-      "group": "slices"
-    },
-    {
-      "id": "slices/vector/ops.ts",
-      "group": "slices"
-    },
-    {
-      "id": "test_focus.js",
-      "group": "test_focus.js"
-    },
-    {
-      "id": "test_full_stack.js",
-      "group": "test_full_stack.js"
-    },
-    {
-      "id": "test_translate.js",
-      "group": "test_translate.js"
-    },
-    {
-      "id": "verify_features_via_graph.js",
-      "group": "verify_features_via_graph.js"
-    },
-    {
-      "id": "verify_vibecoding_flow.js",
-      "group": "verify_vibecoding_flow.js"
-    },
-    {
-      "id": "scripts/test_all.js",
-      "group": "scripts"
     }
   ],
   "links": [
     {
-      "source": "slices/graph/db.ts",
-      "target": "slices/graph/schema.ts"
-    },
-    {
-      "source": "slices/graph/gatekeeper.ts",
-      "target": "slices/graph/db.ts"
-    },
-    {
-      "source": "slices/graph/gatekeeper.ts",
-      "target": "slices/graph/indexer.ts"
-    },
-    {
-      "source": "slices/graph/indexer.ts",
-      "target": "slices/graph/db.ts"
-    },
-    {
-      "source": "src/cli.ts",
-      "target": "src/mcp/server.ts"
-    },
-    {
-      "source": "src/mcp/server.ts",
-      "target": "slices/graph/gatekeeper.ts"
-    },
-    {
-      "source": "src/mcp/server.ts",
-      "target": "slices/memory/logic.ts"
-    },
-    {
-      "source": "src/mcp/server.ts",
-      "target": "slices/verification/gatekeeper.ts"
-    },
-    {
-      "source": "src/mcp/server.ts",
-      "target": "slices/focus/ops.ts"
-    },
-    {
-      "source": "src/mcp/server.ts",
-      "target": "slices/graph/ops.ts"
-    },
-    {
-      "source": "src/mcp/server.ts",
-      "target": "slices/translate/ops.ts"
-    },
-    {
-      "source": "src/mcp/server.ts",
-      "target": "slices/vector/ops.ts"
-    },
-    {
-      "source": "slices/focus/ops.ts",
-      "target": "slices/shared/openai.ts"
-    },
-    {
-      "source": "slices/graph/ops.ts",
-      "target": "slices/graph/indexer.ts"
-    },
-    {
-      "source": "slices/translate/ops.ts",
-      "target": "slices/shared/openai.ts"
+      "source": "src/features/database-migrations/services/progress-migrations.ts",
+      "target": "src/features/database-migrations/services/progress-migrations.ts",
+      "type": "static"
     }
-  ]
+  ],
+  "prd": {
+    "path": "spec/prd.json",
+    "features": []
+  },
+  "tickets": {
+    "path": "spec/tickets",
+    "total": 0,
+    "byStatus": {},
+    "items": []
+  },
+  "tests": {
+    "path": "spec/tests/features",
+    "total": 0,
+    "features": [],
+    "results": []
+  },
+  "changes": {
+    "modified": [
+      ".claude/CLAUDE.md",
+      ".cursorrules",
+      ".windsurfrules",
+      "AGENTS.md",
+      "website/.vitepress/components/RepoDashboard.vue",
+      "website/dashboard.md",
+      "website/guide/concepts.md",
+      "website/guide/getting-started.md",
+      "website/guide/workflow.md",
+      "website/public/dashboard.json",
+      "website/tools/dashboard-export.md",
+      "website/tools/init.md",
+      "website/.vitepress/cache/",
+      "website/guide/repo-snapshot.md"
+    ],
+    "added": [],
+    "deleted": [],
+    "commits": [
+      {
+        "hash": "e0f75df",
+        "date": "2026-01-25 15:51:43 +0000",
+        "message": "docs: add troubleshooting instructions for better-sqlite3 native module errors"
+      },
+      {
+        "hash": "b4f0f5a",
+        "date": "2026-01-25 15:13:10 +0000",
+        "message": "feat: initialize website structure with essential tools and documentation"
+      },
+      {
+        "hash": "92784c9",
+        "date": "2026-01-25 01:06:26 +0000",
+        "message": "feat: Initialize project with v2 hybrid database schema, relocate core services, and update project IDs."
+      },
+      {
+        "hash": "c99c159",
+        "date": "2026-01-24 23:30:38 +0000",
+        "message": "reboot"
+      },
+      {
+        "hash": "3c8471c",
+        "date": "2026-01-20 00:46:09 +0000",
+        "message": "made v1.7.0"
+      },
+      {
+        "hash": "82b5a6c",
+        "date": "2026-01-19 23:19:05 +0000",
+        "message": "fix: Use server_webview.py instead of server.py in py2app build"
+      },
+      {
+        "hash": "d0c0d22",
+        "date": "2026-01-19 23:16:06 +0000",
+        "message": "fix: Remove automatic database migration at startup"
+      },
+      {
+        "hash": "a2b14d9",
+        "date": "2026-01-19 23:07:43 +0000",
+        "message": "fix: Bundle SQL migrations with built app to prevent setup loop"
+      },
+      {
+        "hash": "2ab8ea3",
+        "date": "2026-01-19 22:35:01 +0000",
+        "message": "fix: Invalidate preflight cache after API key is set in setup wizard"
+      },
+      {
+        "hash": "4facf81",
+        "date": "2026-01-19 22:30:05 +0000",
+        "message": "feat: Fix setup wizard UX issues and bump to v1.6.0"
+      }
+    ]
+  },
+  "system": {
+    "graphUpdatedAt": "2026-01-25T16:34:53.022Z",
+    "ragUpdatedAt": "2026-01-25T16:36:45.312Z",
+    "ollama": true
+  },
+  "drift": {
+    "summary": {
+      "missingTickets": 0,
+      "missingTests": 0,
+      "missingImplementation": 0,
+      "closedButFailing": 0,
+      "orphanTickets": 0,
+      "orphanTests": 0
+    },
+    "items": []
+  }
 }

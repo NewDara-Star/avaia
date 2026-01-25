@@ -25,6 +25,8 @@ const ticketStats = computed(() => data.value?.tickets?.byStatus || {})
 const tests = computed(() => data.value?.tests?.features || [])
 const changes = computed(() => data.value?.changes || null)
 const system = computed(() => data.value?.system || null)
+const drift = computed(() => data.value?.drift || null)
+const errors = computed(() => data.value?.errors || [])
 </script>
 
 <template>
@@ -148,6 +150,34 @@ const system = computed(() => data.value?.system || null)
       </section>
 
       <section class="panel">
+        <h2>Drift</h2>
+        <div class="summary-grid">
+          <div class="card">
+            <div class="label">Missing Tickets</div>
+            <div class="value">{{ drift?.summary?.missingTickets || 0 }}</div>
+          </div>
+          <div class="card">
+            <div class="label">Missing Tests</div>
+            <div class="value">{{ drift?.summary?.missingTests || 0 }}</div>
+          </div>
+          <div class="card">
+            <div class="label">Missing Impl</div>
+            <div class="value">{{ drift?.summary?.missingImplementation || 0 }}</div>
+          </div>
+          <div class="card">
+            <div class="label">Closed & Failing</div>
+            <div class="value">{{ drift?.summary?.closedButFailing || 0 }}</div>
+          </div>
+        </div>
+        <ul>
+          <li v-for="item in (drift?.items || []).slice(0, 20)" :key="item.type + (item.featureId || '')">
+            <strong v-if="item.featureId">{{ item.featureId }}:</strong> {{ item.detail }}
+          </li>
+          <li v-if="!drift || drift.items.length === 0">No drift detected.</li>
+        </ul>
+      </section>
+
+      <section class="panel">
         <h2>Recent Changes</h2>
         <div v-if="!changes">
           No git history detected.
@@ -180,6 +210,15 @@ const system = computed(() => data.value?.system || null)
           <div>RAG Index: {{ system?.ragUpdatedAt || 'unknown' }}</div>
           <div>Ollama: {{ system?.ollama ? 'reachable' : 'offline' }}</div>
         </div>
+      </section>
+
+      <section class="panel" v-if="errors.length">
+        <h2>Data Errors</h2>
+        <ul>
+          <li v-for="err in errors" :key="err.source + err.timestamp">
+            {{ err.source }} — {{ err.message }}
+          </li>
+        </ul>
       </section>
     </div>
   </div>

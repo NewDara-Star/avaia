@@ -33,7 +33,7 @@ Use `arela_verify` before stating facts. Run tests; generate tests with `arela_t
 If a mistake repeats, lock it with `arela_enforce` (guard scripts).
 
 ## 10) Document (Local)
-Update slice READMEs and `website/` docs for any new capability.
+Update slice READMEs and `website/` docs for any new capability. `REPO_SNAPSHOT.md` is auto-generated and should reflect current state.
 
 ## 11) Close (Local)
 Run guards/checklist and **always** update `SCRATCHPAD.md`.

@@ -8,6 +8,12 @@ Bootstrap a repo so it is ready for Arela.
 arela init
 ```
 
+Start the dashboard dev server after init:
+
+```bash
+arela init --dashboard
+```
+
 ## What it does
 - Creates/updates `.mcp.json` for the current repo
 - Writes the constitution into `AGENTS.md`
@@ -22,7 +28,9 @@ arela init
 - Writes `.windsurfrules` and `.cursorrules`, and updates `~/.gemini/GEMINI.md` if it exists
 - Runs graph indexing first, then vector indexing (Graph → RAG)
 - Exports dashboard data to `.arela/dashboard.json` and `website/public/dashboard.json`
+- Generates `REPO_SNAPSHOT.md`
 - Starts the MCP server in the background
+- Optionally starts the dashboard dev server if `--dashboard` is used
 
 ## Notes
 - Indexing requires Ollama; init will attempt to start it.

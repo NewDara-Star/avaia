@@ -6,6 +6,8 @@ This dashboard is the **live mirror** of a repo’s current state:
 - Tickets
 - Tests + last run status
 - Recent changes
+- Drift (intent vs implementation mismatches)
+- Repo snapshot (`REPO_SNAPSHOT.md`)
 - System health
 
 *Data updates automatically ~5s after file changes.*

@@ -50,6 +50,7 @@ slices/
 16. **SCRATCHPAD = SOURCE OF TRUTH.** If unsure, read it and/or ask the operator. Prefer `arela_vector_search` + `arela_graph_impact` over summarization.
 17. **DECISIONS REQUIRE QUESTIONS.** When blocked or at a decision point, ask the operator, offer 2-3 options, and label it **Type 1** or **Type 2**.
 18. **SPEC PATHS ARE CANONICAL.** PRD + stack live in `spec/` (`spec/prd.json`, `spec/stack.json`), tickets in `spec/tickets/`, tests in `spec/tests/`.
+19. **VERIFY EACH STEP.** Before stating facts or marking work complete, run `arela_verify` and relevant tests/`arela_checklist`.
 
 ## Workflow
 See `website/guide/workflow.md` for the numbered 11-step flow.

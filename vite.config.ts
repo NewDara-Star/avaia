@@ -1,22 +1,16 @@
 import { defineConfig } from 'vite';
+import react from '@vitejs/plugin-react';
+import tailwindcss from '@tailwindcss/vite';
 import path from 'path';
 
 export default defineConfig({
+  plugins: [react(), tailwindcss()],
   build: {
     outDir: 'dist',
     sourcemap: true,
-    lib: {
-      entry: {
-        'main/index': path.resolve(__dirname, 'src/main/index.ts'),
-        'preload': path.resolve(__dirname, 'src/preload.ts'),
-      },
-      formats: ['es'],
-    },
+    target: 'esnext',
     rollupOptions: {
       external: ['electron', 'better-sqlite3'],
-      output: {
-        entryFileNames: '[name].js',
-      },
     },
   },
   resolve: {
@@ -25,7 +19,6 @@ export default defineConfig({
     },
   },
   server: {
-    middlewareMode: false,
     port: 5173,
   },
 });

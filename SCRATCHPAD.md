@@ -1,6 +1,6 @@
 # SCRATCHPAD.md
 
-**Last Updated:** 2026-01-25T17:02:00.000Z
+**Last Updated:** 2026-01-25T17:15:00.000Z
 
 ## Session 1: Context Setup (2026-01-25T15:06:37Z)
 - Project bootstrapped with arela init
@@ -202,3 +202,325 @@ Generated 28 Gherkin scenarios:
 **Status:** IMPLEMENTATION COMPLETE - Ready for Main Process Integration
 
 **Next Session Focus:** App bootstrap (Electron main process integration) + header UI integration
+
+---
+
+## Session 5: Planning - FEAT-001 Integration Strategy (2026-01-25)
+
+**Task:** Act as Planner - Break down FEAT-001 integration into executable tasks with priorities
+
+**Context:** Backend implementation is 100% complete (Session 4), but app infrastructure is missing.
+
+### Discovery Phase
+
+**Files Investigated:**
+- ✅ Profile feature: src/features/profile-management/ (all files exist)
+- ✅ Gherkin tests: spec/tests/features/profile-management.feature (28 scenarios)
+- ⚠️ Main process: src/main/ (EMPTY directory)
+- ⚠️ Renderer: src/renderer/ (EMPTY directory)
+- ⚠️ App root: src/main.tsx (only console.log)
+- ✅ Entry point: index.html → src/main.tsx
+- ✅ Package.json: "main": "dist/main/index.js"
+
+**Critical Finding:** App infrastructure doesn't exist yet. The profile system is a complete feature implementation without an app to run in.
+
+### Architecture Decision (Type 1)
+
+**Question Asked:** "What's your intent for Avaia's app infrastructure?"
+
+**Options Presented:**
+1. Full Electron app (main process + renderer) [SELECTED]
+2. React web app first, Electron later
+3. Just plan it, don't build yet
+
+**User Answer:** Full Electron app (main process + renderer)
+
+**Rationale:** Profile isolation requires per-child SQLite databases at {userData}/profiles/{id}/progress.db, which requires Electron filesystem access. Cannot be done in browser.
+
+### Task Breakdown Created
+
+**Phase 1: Foundation (P0 - Critical Blockers)**
+
+1. **Create Electron Main Process**
+   - Context: No main process exists. Need to create src/main/index.ts with app lifecycle, BrowserWindow, IPC registration.
+   - Files: src/main/index.ts (new), vite.config.ts (update for Electron build)
+   - AC: App launches, window renders, IPC handlers registered
+
+2. **Create Preload Bridge**
+   - Context: Components call window.__mainApi but it doesn't exist. Need contextBridge to expose IPC.
+   - Files: src/renderer/preload.ts (new), src/types/global.d.ts (new)
+   - AC: window.__mainApi.profiles.* methods work, TypeScript recognizes interface
+
+3. **Create React App Root**
+   - Context: src/main.tsx is empty. Need React app with routing, providers, Tailwind.
+   - Files: src/main.tsx (rewrite), src/App.tsx (new), src/components/Layout.tsx (new)
+   - AC: React app renders, Tailwind works, routing initialized
+
+4. **Integrate Profile System**
+   - Context: Wire up profile bootstrap on app start, add dropdown trigger in header.
+   - Files: src/main/index.ts (call initializeProfileSystem), src/components/Layout.tsx (add avatar button)
+   - AC: profiles.db created on launch, dropdown opens from header, switching works
+
+5. **Run Acceptance Tests**
+   - Context: 28 Gherkin scenarios exist but never executed. Run and fix failures.
+   - Files: spec/tests/steps/profile-management.steps.ts (fix any bugs)
+   - AC: All @critical scenarios pass, data isolation verified
+
+**Phase 2: Integration (P1 - Important)**
+
+6. **Onboarding Integration**
+   - Context: After profile creation, redirect to onboarding step 4 (track selection).
+   - Files: CreateProfileModal.tsx (add redirect), onboarding component (find/create)
+   - AC: New profiles go to onboarding, track saved to profile.track
+
+7. **Profile Persistence**
+   - Context: App needs to remember last active profile across restarts.
+   - Files: src/services/preferences.ts (new), src/main/index.ts (load on start)
+   - AC: App remembers profile, restarts load correct profile, invalid ID falls back to first
+
+8. **Documentation Website**
+   - Context: AGENTS.md Rule #8 requires website docs for all features.
+   - Files: website/docs/features/profile-management.md (new)
+   - AC: User guide + dev guide + architecture docs published
+
+**Phase 3: Polish (P2 - Nice-to-Have)**
+
+9. **Profile Deletion Confirmation UI**
+   - Context: Backend has confirmation logic, verify UI is user-friendly.
+   - Files: Review ProfileDropdown.tsx, possibly create DeleteProfileModal.tsx
+   - AC: Warning clear, name re-typing works, button disabled until match
+
+### Missing Information Identified
+
+**Need to locate (during implementation):**
+- Onboarding flow component (for Task 6)
+- API key storage location (for Task 6)
+- Existing preferences/settings service (for Task 7)
+- Website documentation structure (for Task 8)
+
+### Decisions Required (Operator)
+
+**Type 2 Decisions (Reversible - Can decide quickly):**
+1. currentProfileId storage: electron-store vs localStorage vs JSON file?
+2. Dropdown visibility: local useState vs global context vs Zustand?
+3. React router library: React Router vs Tanstack Router vs Wouter?
+4. Tailwind integration: PostCSS plugin vs Vite plugin vs @tailwindcss/vite?
+
+**Recommendation:** Use electron-store (widely used), local useState (simplest), React Router (most common), @tailwindcss/vite (fastest with Vite).
+
+### Output Delivered
+
+Created comprehensive task breakdown document above with:
+- ✅ Context (the why) for each task
+- ✅ Technical task (the what) with explicit file references
+- ✅ Acceptance criteria checklists
+- ✅ Files to modify/create
+- ✅ Priority levels (P0/P1/P2)
+- ✅ Decision points labeled Type 1 or Type 2
+
+**Status:** Planning Complete ✅
+
+**Next Action:** Operator decides:
+- Start Phase 1 implementation immediately?
+- Generate tickets with arela_ticket_generate?
+- Modify scope/priorities first?
+
+---
+
+## Session 6: Audit & Planning - FEAT-001 Integration (2026-01-25)
+
+**Task:** Audit existing profile management work and create implementation plan + ticket
+
+**Requested by User:** "check the work they have done"
+
+### Audit Results
+
+**Files Audited:**
+- Backend: profiles-db.ts, profile-service.ts, profile-ipc.ts, legacy-import.ts
+- UI: ProfileDropdown.tsx, CreateProfileModal.tsx, useProfiles.ts
+- Tests: profile-management.feature (28 scenarios), profile-management.steps.ts (426 lines)
+- Build: src/main/index.ts, vite.config.ts, tsconfig files
+
+**Quality Assessment:**
+
+✅ **Backend Services: GOLD STANDARD**
+- Idempotent DB init, crash-safe operations, full error handling
+- Professional-grade code with JSDoc, Zod validation, proper transactions
+- Legacy import with API key migration (plaintext → encrypted)
+
+✅ **React Components: PRODUCTION READY**
+- Full TypeScript typing, error handling, loading states
+- Tailwind CSS styling matching design spec
+- Accessibility features (labels, ARIA, keyboard nav)
+
+✅ **Tests: COMPREHENSIVE**
+- 28 Gherkin scenarios (@critical, @security, @profile-ui, @first-run)
+- 426 lines of step definitions with context management
+- Ready to run once integration fixed
+
+❌ **Integration: BROKEN**
+- Main process: 5 TypeScript errors (dynamic loading pattern incomplete)
+- Preload bridge: Missing entirely (components can't call IPC)
+- React app root: Empty (no App.tsx, no Layout, just console.log)
+- Build config: Missing React/Tailwind plugins
+
+**Overall Grade:** B+ (excellent implementation, incomplete integration)
+
+### Deliverables
+
+1. **Audit Report:** `/Users/Star/.claude/plans/precious-soaring-church.md`
+   - Executive summary (what works, what's broken, what's missing)
+   - Deep dive on each issue with TypeScript 101 explanations
+   - Architecture review (patterns used, code quality, security)
+
+2. **Implementation Plan:** Same file
+   - Phase 1: Fix Build Errors (4 tasks)
+   - Phase 2: Create React App (5 tasks)
+   - Phase 3: Integration Testing (4 tasks)
+   - Phase 4: Polish & Documentation (3 tasks)
+
+3. **Ticket:** `spec/tickets/FEAT-001-profile-management-integration.md`
+   - Full breakdown of all tasks
+   - Acceptance criteria (30+ items)
+   - Files to create (7) and modify (6)
+   - Verification checklist
+   - Definition of done
+
+### User Decisions
+
+1. "Explain specific issues in more detail" → Created deep dive section
+2. "Plan how to fix everything" → Created 4-phase implementation plan
+3. "Yes, exit plan mode and generate tickets" → Generated ticket + exited
+
+### Status
+
+**Planning:** Complete ✅
+**Ticket:** Generated at `spec/tickets/FEAT-001-profile-management-integration.md`
+**Tests:** Already exist (ready to run once build fixed)
+**Implementation:** Not started (waiting for next session)
+
+**Next Steps:** Operator can start Phase 1 (fix build errors) or delegate using ticket
+
+---
+
+## Session 7: FEAT-001 Phase 1 Implementation - Build Infrastructure Fixed (2026-01-25T17:15Z)
+
+**Task:** Execute FEAT-001 Phase 1: Fix Build Errors (Critical Blocker)
+**Status:** ✅ COMPLETE - Build now passes without TypeScript errors
+
+### 4 Tasks Executed
+
+**Task 1.1: Fixed src/main/index.ts**
+- **Problem:** Broken dynamic loading pattern (async loadElectron function)
+- **Root Cause:** Over-engineered solution for ESM/CommonJS compatibility that didn't work
+- **Solution:** Direct imports instead of dynamic loading
+  - Removed: async loadElectron, let app/BrowserWindow declarations
+  - Added: `import { app, BrowserWindow } from "electron"`
+- **Errors Fixed:** 5 TypeScript errors
+  - TS6133: 'loadElectron' declared but never read
+  - TS2749: BrowserWindow refers to value, used as type
+  - TS2454: Variable 'app' used before being assigned (3x)
+
+**Task 1.2: Created src/renderer/preload.ts**
+- **What:** IPC bridge exposing `window.__mainApi.profiles.*` methods
+- **How:** contextBridge.exposeInMainWorld for security isolation
+- **Methods:** list(), getCurrent(), create(), switch(), delete(), update()
+- **Code Quality:** Full JSDoc for all methods, type annotations, Promise returns
+- **Lines:** 70
+- **File:** `/Users/Star/avaia/src/renderer/preload.ts`
+
+**Task 1.3: Created src/types/global.d.ts**
+- **What:** Global TypeScript interface for `window.__mainApi`
+- **Why:** TS doesn't recognize dynamically exposed properties without type declaration
+- **Structure:** Matches preload bridge with full Promise return types
+- **Lines:** 65
+- **File:** `/Users/Star/avaia/src/types/global.d.ts`
+
+**Task 1.4: Updated Build Configuration**
+- **vite.config.ts:**
+  - Added `@vitejs/plugin-react` and `@tailwindcss/vite` plugins
+  - Set `build.target = "esnext"`
+
+- **tsconfig.electron.json:**
+  - Updated: `src/main/index.ts`, `src/renderer/preload.ts`
+  - Added: `src/types/global.d.ts` to includes list
+
+- **Dependencies Installed:**
+  - @vitejs/plugin-react@^5.1.2
+  - @tailwindcss/vite@^4.1.18
+  - npm install: 121 packages added/removed, 755 total audited
+
+### Bug Fixes During Implementation
+
+1. **Removed old src/preload.ts**
+   - **Problem:** Conflicted with new global.d.ts (duplicate `__mainApi` declaration)
+   - **Error:** TS2687: All declarations of '__mainApi' must have identical modifiers
+   - **Solution:** Deleted old file, kept only src/renderer/preload.ts
+
+2. **Updated useProfiles.ts hook**
+   - **Problem:** Hook called old flat API (window.__mainApi.listProfiles(), etc.)
+   - **Why:** Old preload was flat, new one is nested under .profiles
+   - **Changes (5 methods):**
+     - listProfiles() → profiles.list()
+     - getCurrentProfile() → profiles.getCurrent()
+     - createProfile() → profiles.create()
+     - switchProfile() → profiles.switch()
+     - deleteProfile() → profiles.delete()
+
+### Build Verification
+
+```
+$ npm run build
+> avaia@2.0.0 build
+> tsc && tsc -p tsconfig.electron.json && vite build
+
+vite v7.1.9 building for production...
+✓ 3 modules transformed.
+dist/index.html                0.32 kB
+dist/assets/index-BuZrwEaf.js  0.80 kB
+✓ built in 96ms
+```
+
+✅ **Status:** PASS - No TypeScript errors, no warnings
+
+### Files Changed (8 total)
+
+**Modified (6):**
+1. src/main/index.ts - Removed dynamic loading pattern
+2. vite.config.ts - Added React/Tailwind plugins
+3. tsconfig.electron.json - Fixed preload path, added global types
+4. src/features/profile-management/hooks/useProfiles.ts - Updated API calls
+5. package.json - Dev deps added by npm install
+6. package-lock.json - Updated by npm install
+
+**Created (2):**
+1. src/renderer/preload.ts - IPC bridge (70 lines)
+2. src/types/global.d.ts - Global window interface (65 lines)
+
+**Deleted (1):**
+1. src/preload.ts - Old conflicting preload
+
+### Acceptance Criteria Met
+
+- [x] npm run build completes without errors
+- [x] No TypeScript errors in main process
+- [x] No TypeScript errors in electron config
+- [x] Preload bridge created with proper types
+- [x] window.__mainApi interface recognized by TypeScript
+- [x] All 4 Phase 1 tasks completed
+
+### Architecture Status Post-Phase 1
+
+**✅ Build Infrastructure Ready:**
+- Direct Electron imports work
+- Preload bridge established with contextBridge
+- Type safety enabled (TypeScript knows about window.__mainApi)
+- React and Tailwind plugins configured
+- Dependencies installed
+
+**⏳ Remaining Phases:**
+- **Phase 2:** Create React App (App.tsx, Layout.tsx, main.tsx, index.css)
+- **Phase 3:** Integration Testing (manual flows + Gherkin scenarios)
+- **Phase 4:** Polish & Documentation (profile persistence, docs, website)
+
+**Completion Progress:** Phase 1 ✅ = 25% of FEAT-001 Integration ticket

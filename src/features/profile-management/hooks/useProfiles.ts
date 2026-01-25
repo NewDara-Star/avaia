@@ -6,11 +6,7 @@
  */
 
 import { useState, useCallback, useEffect } from "react";
-import {
-  Profile,
-  CreateProfileInput,
-  ProfileListItem,
-} from "../types.js";
+import { CreateProfileInput, ProfileListItem } from "../types.js";
 
 /**
  * Hook for managing profile state and operations
@@ -31,12 +27,11 @@ export function useProfiles() {
       setIsLoading(true);
       setError(null);
 
-      // TODO: This will use IPC to call profile service in main process
-      // For now, placeholder
-      const result = await window.__mainApi?.listProfiles?.();
+      // Use IPC to call profile service in main process
+      const result = await window.__mainApi?.profiles?.list?.();
       setProfiles(result || []);
 
-      const current = await window.__mainApi?.getCurrentProfile?.();
+      const current = await window.__mainApi?.profiles?.getCurrent?.();
       setCurrentProfileId(current?.id || null);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -49,7 +44,7 @@ export function useProfiles() {
     async (input: CreateProfileInput) => {
       try {
         setError(null);
-        const result = await window.__mainApi?.createProfile?.(input);
+        const result = await window.__mainApi?.profiles?.create?.(input);
         if (result?.success) {
           await loadProfiles();
           return { success: true, data: result.data };
@@ -69,7 +64,7 @@ export function useProfiles() {
     async (profileId: string) => {
       try {
         setError(null);
-        const result = await window.__mainApi?.switchProfile?.(profileId);
+        const result = await window.__mainApi?.profiles?.switch?.(profileId);
         if (result?.success) {
           await loadProfiles();
           return { success: true };
@@ -89,7 +84,7 @@ export function useProfiles() {
     async (profileId: string, confirmationName: string) => {
       try {
         setError(null);
-        const result = await window.__mainApi?.deleteProfile?.(
+        const result = await window.__mainApi?.profiles?.delete?.(
           profileId,
           confirmationName
         );
@@ -118,30 +113,4 @@ export function useProfiles() {
     deleteProfile,
     loadProfiles,
   };
-}
-
-// Type declaration for window.__mainApi
-declare global {
-  interface Window {
-    __mainApi?: {
-      listProfiles?: () => Promise<ProfileListItem[]>;
-      getCurrentProfile?: () => Promise<Profile | null>;
-      createProfile?: (input: CreateProfileInput) => Promise<{
-        success: boolean;
-        data?: Profile;
-        error?: string;
-      }>;
-      switchProfile?: (profileId: string) => Promise<{
-        success: boolean;
-        error?: string;
-      }>;
-      deleteProfile?: (
-        profileId: string,
-        confirmationName: string
-      ) => Promise<{
-        success: boolean;
-        error?: string;
-      }>;
-    };
-  }
 }

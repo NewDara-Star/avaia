@@ -1,0 +1,26 @@
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "module": "ESNext",
+    "lib": ["ES2020"],
+    "moduleResolution": "bundler",
+    "resolveJsonModule": true,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+
+    "noEmit": false,
+    "outDir": "./dist",
+    "declaration": false,
+
+    "strict": true
+  },
+  "include": [
+    "src/main/index.ts",
+    "src/renderer/preload.ts",
+    "src/types/better-sqlite3.d.ts",
+    "src/types/global.d.ts",
+    "src/features/profile-management/types.ts",
+    "src/features/profile-management/services/*.ts"
+  ]
+}

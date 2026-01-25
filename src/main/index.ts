@@ -9,9 +9,9 @@
  * - Initializing the profile system
  */
 
-import { app, BrowserWindow, ipcMain } from "electron";
 import path from "path";
 import { fileURLToPath } from "url";
+import { app, BrowserWindow } from "electron";
 import { registerProfileIpcHandlers, initializeProfileSystem } from "../features/profile-management/services/profile-ipc.js";
 import { importLegacyDataIfNeeded } from "../features/profile-management/services/legacy-import.js";
 
@@ -28,7 +28,7 @@ function createWindow(): void {
     width: 1200,
     height: 800,
     webPreferences: {
-      preload: path.join(__dirname, "../preload.ts"),
+      preload: path.join(__dirname, "../renderer/preload.js"),
       nodeIntegration: false,
       contextIsolation: true,
     },

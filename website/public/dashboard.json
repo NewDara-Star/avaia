@@ -1,6 +1,5 @@
 {
-  "generated": "2026-01-25T16:36:45.368Z",
-  "errors": [],
+  "generated": "2026-01-25T16:55:18.607Z",
   "stats": {
     "files": 40,
     "links": 1
@@ -176,7 +175,193 @@
   ],
   "prd": {
     "path": "spec/prd.json",
-    "features": []
+    "features": [
+      {
+        "id": "FEAT-001",
+        "name": "Profile Management System",
+        "priority": "P0"
+      },
+      {
+        "id": "FEAT-002",
+        "name": "API Key Onboarding Wizard",
+        "priority": "P0"
+      },
+      {
+        "id": "FEAT-003",
+        "name": "Curriculum Update Engine",
+        "priority": "P0"
+      },
+      {
+        "id": "FEAT-004",
+        "name": "Session Lifecycle Manager",
+        "priority": "P0"
+      },
+      {
+        "id": "FEAT-005",
+        "name": "FSRS-5 Spaced Repetition Engine",
+        "priority": "P0"
+      },
+      {
+        "id": "FEAT-005A",
+        "name": "Token-Efficient Code Snippet Storage for Reviews",
+        "priority": "P0"
+      },
+      {
+        "id": "FEAT-006",
+        "name": "Diagnostic Question System",
+        "priority": "P0"
+      },
+      {
+        "id": "FEAT-006A",
+        "name": "Three-Layer Verification Protocol",
+        "priority": "P0"
+      },
+      {
+        "id": "FEAT-006B",
+        "name": "Confidence Tracking & Hypercorrection UI",
+        "priority": "P0"
+      },
+      {
+        "id": "FEAT-007",
+        "name": "Project & Milestone Tracker",
+        "priority": "P0"
+      },
+      {
+        "id": "FEAT-008",
+        "name": "Learning Preferences Auto-Detection",
+        "priority": "P0"
+      },
+      {
+        "id": "FEAT-009",
+        "name": "Productive Failure Sandbox System",
+        "priority": "P1"
+      },
+      {
+        "id": "FEAT-009A",
+        "name": "Sandbox Trigger Logic & Failure Pattern Detection",
+        "priority": "P0"
+      },
+      {
+        "id": "FEAT-010",
+        "name": "Passive Learner Detection & Intervention",
+        "priority": "P1"
+      },
+      {
+        "id": "FEAT-011",
+        "name": "Cross-Project Refactoring Challenges",
+        "priority": "P1"
+      },
+      {
+        "id": "FEAT-012",
+        "name": "WebContainer Code Execution Sandbox",
+        "priority": "P0"
+      },
+      {
+        "id": "FEAT-013",
+        "name": "Chat Interface with Markdown Rendering",
+        "priority": "P0"
+      },
+      {
+        "id": "FEAT-014",
+        "name": "Data Export & Import System",
+        "priority": "P0"
+      },
+      {
+        "id": "FEAT-015",
+        "name": "Dashboard Overview Screen",
+        "priority": "P0"
+      },
+      {
+        "id": "FEAT-016",
+        "name": "Session Notes & Continuity System",
+        "priority": "P1"
+      },
+      {
+        "id": "FEAT-017",
+        "name": "Exit Ticket System",
+        "priority": "P0"
+      },
+      {
+        "id": "FEAT-018",
+        "name": "Dark Mode & Light Mode Toggle",
+        "priority": "P2"
+      },
+      {
+        "id": "FEAT-019",
+        "name": "Keyboard Shortcuts",
+        "priority": "P1"
+      },
+      {
+        "id": "FEAT-020",
+        "name": "Preflight Check System",
+        "priority": "P0"
+      },
+      {
+        "id": "FEAT-021",
+        "name": "Database Migration System",
+        "priority": "P0"
+      },
+      {
+        "id": "FEAT-022",
+        "name": "Prompt Caching for Cost Reduction",
+        "priority": "P1"
+      },
+      {
+        "id": "FEAT-023",
+        "name": "Concept Visualization Library",
+        "priority": "P1"
+      },
+      {
+        "id": "FEAT-024",
+        "name": "Session Timer & Pomodoro Mode",
+        "priority": "P2"
+      },
+      {
+        "id": "FEAT-025",
+        "name": "Emotional State Inference & Adaptive Intervention",
+        "priority": "P0"
+      },
+      {
+        "id": "FEAT-026",
+        "name": "Anti-Sycophancy Protocol with Technical Enforcement",
+        "priority": "P0"
+      },
+      {
+        "id": "FEAT-027",
+        "name": "Scaffolded Hint System (Adaptive to Independence)",
+        "priority": "P1"
+      },
+      {
+        "id": "FEAT-028",
+        "name": "Contrasting Cases for Misconceptions",
+        "priority": "P1"
+      },
+      {
+        "id": "FEAT-029",
+        "name": "Question Pattern Analysis",
+        "priority": "P1"
+      },
+      {
+        "id": "FEAT-030",
+        "name": "Error Reporting & Telemetry System",
+        "priority": "P1"
+      },
+      {
+        "id": "FEAT-031",
+        "name": "Cognitive Load Monitoring & Prevention",
+        "priority": "P0"
+      },
+      {
+        "id": "FEAT-032",
+        "name": "Stuck Learner Intervention Ladder (No Human Escalation)",
+        "priority": "P0"
+      },
+      {
+        "id": "FEAT-033",
+        "name": "Legacy Data Import (v1 → v2)",
+        "priority": "P0"
+      }
+    ]
   },
   "tickets": {
     "path": "spec/tickets",
@@ -192,24 +377,24 @@
   },
   "changes": {
     "modified": [
-      ".claude/CLAUDE.md",
-      ".cursorrules",
-      ".windsurfrules",
-      "AGENTS.md",
-      "website/.vitepress/components/RepoDashboard.vue",
-      "website/dashboard.md",
-      "website/guide/concepts.md",
-      "website/guide/getting-started.md",
-      "website/guide/workflow.md",
-      "website/public/dashboard.json",
-      "website/tools/dashboard-export.md",
-      "website/tools/init.md",
-      "website/.vitepress/cache/",
-      "website/guide/repo-snapshot.md"
+      "REPO_SNAPSHOT.md",
+      "spec/prd.json",
+      "spec/stack.json",
+      "website/public/dashboard.json"
     ],
     "added": [],
     "deleted": [],
     "commits": [
+      {
+        "hash": "263edf8",
+        "date": "2026-01-25 16:48:10 +0000",
+        "message": "feat: update REPO_SNAPSHOT and SCRATCHPAD with product description, tech stack, and system health status"
+      },
+      {
+        "hash": "c5d3484",
+        "date": "2026-01-25 16:42:38 +0000",
+        "message": "feat: add repo snapshot documentation and update dependencies"
+      },
       {
         "hash": "e0f75df",
         "date": "2026-01-25 15:51:43 +0000",
@@ -249,16 +434,6 @@
         "hash": "a2b14d9",
         "date": "2026-01-19 23:07:43 +0000",
         "message": "fix: Bundle SQL migrations with built app to prevent setup loop"
-      },
-      {
-        "hash": "2ab8ea3",
-        "date": "2026-01-19 22:35:01 +0000",
-        "message": "fix: Invalidate preflight cache after API key is set in setup wizard"
-      },
-      {
-        "hash": "4facf81",
-        "date": "2026-01-19 22:30:05 +0000",
-        "message": "feat: Fix setup wizard UX issues and bump to v1.6.0"
       }
     ]
   },
@@ -266,16 +441,5 @@
     "graphUpdatedAt": "2026-01-25T16:34:53.022Z",
     "ragUpdatedAt": "2026-01-25T16:36:45.312Z",
     "ollama": true
-  },
-  "drift": {
-    "summary": {
-      "missingTickets": 0,
-      "missingTests": 0,
-      "missingImplementation": 0,
-      "closedButFailing": 0,
-      "orphanTickets": 0,
-      "orphanTests": 0
-    },
-    "items": []
   }
 }

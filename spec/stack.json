@@ -1,4 +1,388 @@
 {
-  "meta": {},
-  "libraries": []
+  "meta": {
+    "project_name": "avaia",
+    "generated_at": "2026-01-24T00:00:00Z",
+    "approved_by_role": "CTO_Security_Agent"
+  },
+  "language_core": {
+    "language": "TypeScript",
+    "version": "5.9.3",
+    "build_tool": "node 24.13.0 (LTS) + electron-builder 26.4.0",
+    "package_manager": "npm 10.9.4"
+  },
+  "supply_chain_security": {
+    "sbom_format": "CycloneDX",
+    "license_policy": "NO-GPL-ALLOWLIST",
+    "vulnerability_db": "OSV/Snyk"
+  },
+  "libraries": [
+    {
+      "name": "electron",
+      "version_constraint": "40.0.0",
+      "category": "Core",
+      "license": "MIT",
+      "provenance": "https://github.com/electron/electron",
+      "security_scan_status": "Pending",
+      "justification": "FEAT-004"
+    },
+    {
+      "name": "electron-builder",
+      "version_constraint": "26.4.0",
+      "category": "Core",
+      "license": "MIT",
+      "provenance": "https://github.com/electron-userland/electron-builder",
+      "security_scan_status": "Pending",
+      "justification": "FEAT-020"
+    },
+    {
+      "name": "better-sqlite3",
+      "version_constraint": "12.6.2",
+      "category": "Database",
+      "license": "MIT",
+      "provenance": "https://github.com/WiseLibs/better-sqlite3",
+      "security_scan_status": "Pending",
+      "justification": "FEAT-021"
+    },
+    {
+      "name": "typescript",
+      "version_constraint": "5.9.3",
+      "category": "Core",
+      "license": "Apache-2.0",
+      "provenance": "https://github.com/microsoft/TypeScript",
+      "security_scan_status": "Pending",
+      "justification": "FEAT-020"
+    },
+    {
+      "name": "react",
+      "version_constraint": "19.2.3",
+      "category": "Core",
+      "license": "MIT",
+      "provenance": "https://github.com/facebook/react",
+      "security_scan_status": "Pending",
+      "justification": "FEAT-015"
+    },
+    {
+      "name": "react-dom",
+      "version_constraint": "19.2.3",
+      "category": "Core",
+      "license": "MIT",
+      "provenance": "https://github.com/facebook/react",
+      "security_scan_status": "Pending",
+      "justification": "FEAT-015"
+    },
+    {
+      "name": "vite",
+      "version_constraint": "7.1.9",
+      "category": "Core",
+      "license": "MIT",
+      "provenance": "https://github.com/vitejs/vite",
+      "security_scan_status": "Pending",
+      "justification": "FEAT-015"
+    },
+    {
+      "name": "tailwindcss",
+      "version_constraint": "4.1.18",
+      "category": "Core",
+      "license": "MIT",
+      "provenance": "https://github.com/tailwindlabs/tailwindcss",
+      "security_scan_status": "Pending",
+      "justification": "FEAT-018"
+    },
+    {
+      "name": "zod",
+      "version_constraint": "4.3.6",
+      "category": "Utility",
+      "license": "MIT",
+      "provenance": "https://github.com/colinhacks/zod",
+      "security_scan_status": "Pending",
+      "justification": "FEAT-020"
+    },
+    {
+      "name": "@webcontainer/api",
+      "version_constraint": "1.6.1",
+      "category": "Utility",
+      "license": "MIT",
+      "provenance": "https://github.com/stackblitz/webcontainer-core",
+      "security_scan_status": "Pending",
+      "justification": "FEAT-012"
+    },
+    {
+      "name": "@xterm/xterm",
+      "version_constraint": "6.0.0",
+      "category": "Utility",
+      "license": "MIT",
+      "provenance": "https://github.com/xtermjs/xterm.js",
+      "security_scan_status": "Pending",
+      "justification": "FEAT-012"
+    },
+    {
+      "name": "monaco-editor-core",
+      "version_constraint": "0.55.1",
+      "category": "Utility",
+      "license": "MIT",
+      "provenance": "https://github.com/microsoft/monaco-editor",
+      "security_scan_status": "Pending",
+      "justification": "FEAT-004"
+    },
+    {
+      "name": "marked",
+      "version_constraint": "17.0.1",
+      "category": "Utility",
+      "license": "MIT",
+      "provenance": "https://github.com/markedjs/marked",
+      "security_scan_status": "Pending",
+      "justification": "FEAT-013"
+    },
+    {
+      "name": "highlight.js",
+      "version_constraint": "11.11.1",
+      "category": "Utility",
+      "license": "BSD-3-Clause",
+      "provenance": "https://github.com/highlightjs/highlight.js",
+      "security_scan_status": "Pending",
+      "justification": "FEAT-013"
+    },
+    {
+      "name": "dompurify",
+      "version_constraint": "3.3.1",
+      "category": "Utility",
+      "license": "Apache-2.0",
+      "provenance": "https://github.com/cure53/DOMPurify",
+      "security_scan_status": "Pending",
+      "justification": "FEAT-013"
+    },
+    {
+      "name": "jszip",
+      "version_constraint": "3.10.1",
+      "category": "Utility",
+      "license": "MIT",
+      "provenance": "https://github.com/Stuk/jszip",
+      "security_scan_status": "Pending",
+      "justification": "FEAT-014"
+    },
+    {
+      "name": "ts-fsrs",
+      "version_constraint": "5.2.3",
+      "category": "Utility",
+      "license": "MIT",
+      "provenance": "https://github.com/open-spaced-repetition/ts-fsrs",
+      "security_scan_status": "Pending",
+      "justification": "FEAT-005"
+    },
+    {
+      "name": "@sentry/electron",
+      "version_constraint": "7.2.0",
+      "category": "Utility",
+      "license": "MIT",
+      "provenance": "https://github.com/getsentry/sentry-electron",
+      "security_scan_status": "Pending",
+      "justification": "FEAT-030"
+    },
+    {
+      "name": "posthog-js",
+      "version_constraint": "1.335.2",
+      "category": "Utility",
+      "license": "Apache-2.0",
+      "provenance": "https://github.com/PostHog/posthog-js",
+      "security_scan_status": "Pending",
+      "justification": "FEAT-030"
+    },
+    {
+      "name": "eslint",
+      "version_constraint": "9.35.0",
+      "category": "Testing",
+      "license": "MIT",
+      "provenance": "https://github.com/eslint/eslint",
+      "security_scan_status": "Pending",
+      "justification": "FEAT-020"
+    },
+    {
+      "name": "vitest",
+      "version_constraint": "3.2.4",
+      "category": "Testing",
+      "license": "MIT",
+      "provenance": "https://github.com/vitest-dev/vitest",
+      "security_scan_status": "Pending",
+      "justification": "FEAT-020"
+    },
+    {
+      "name": "@types/node",
+      "version_constraint": "25.0.10",
+      "category": "Utility",
+      "license": "MIT",
+      "provenance": "https://github.com/DefinitelyTyped/DefinitelyTyped",
+      "security_scan_status": "Pending",
+      "justification": "FEAT-020"
+    },
+    {
+      "name": "@types/react",
+      "version_constraint": "19.2.9",
+      "category": "Utility",
+      "license": "MIT",
+      "provenance": "https://github.com/DefinitelyTyped/DefinitelyTyped",
+      "security_scan_status": "Pending",
+      "justification": "FEAT-015"
+    },
+    {
+      "name": "@types/react-dom",
+      "version_constraint": "19.2.3",
+      "category": "Utility",
+      "license": "MIT",
+      "provenance": "https://github.com/DefinitelyTyped/DefinitelyTyped",
+      "security_scan_status": "Pending",
+      "justification": "FEAT-015"
+    }
+  ],
+  "architectural_decisions": [
+    {
+      "id": "ADR-001",
+      "title": "Desktop Runtime Selection",
+      "decision": "Use Electron as the desktop runtime to support a full web-based renderer plus WebContainer integration and Electron-specific OS capabilities (safeStorage, auto-updates).",
+      "alternatives_considered": [
+        "Electron",
+        "Tauri"
+      ],
+      "decision_matrix_score": {
+        "license_compliance": 10,
+        "security_posture": 7,
+        "community_maintenance": 9,
+        "total_score": 235
+      }
+    },
+    {
+      "id": "ADR-002",
+      "title": "Application Packaging & Distribution",
+      "decision": "Use electron-builder for deterministic packaging (pinned), consistent CI release artifacts, and update plumbing compatibility.",
+      "alternatives_considered": [
+        "electron-builder",
+        "electron-forge"
+      ],
+      "decision_matrix_score": {
+        "license_compliance": 10,
+        "security_posture": 7,
+        "community_maintenance": 8,
+        "total_score": 228
+      }
+    },
+    {
+      "id": "ADR-003",
+      "title": "Local Persistence Layer",
+      "decision": "Use SQLite via better-sqlite3 for local-first persistence with strict transactional migrations and deterministic access patterns.",
+      "alternatives_considered": [
+        "better-sqlite3",
+        "sqlite3 (node-sqlite3)"
+      ],
+      "decision_matrix_score": {
+        "license_compliance": 10,
+        "security_posture": 7,
+        "community_maintenance": 8,
+        "total_score": 228
+      }
+    },
+    {
+      "id": "ADR-004",
+      "title": "Renderer UI Tooling",
+      "decision": "Use React + Vite + TailwindCSS for renderer UI composition, predictable builds, and maintainable component architecture across dashboard/session screens.",
+      "alternatives_considered": [
+        "React + Vite",
+        "Vanilla TS + Web Components"
+      ],
+      "decision_matrix_score": {
+        "license_compliance": 10,
+        "security_posture": 7,
+        "community_maintenance": 9,
+        "total_score": 235
+      }
+    },
+    {
+      "id": "ADR-005",
+      "title": "Markdown Rendering Security Pipeline",
+      "decision": "Use marked for Markdown parsing, highlight.js for syntax highlighting, and DOMPurify for sanitisation to reduce XSS risk while keeping rendering fast.",
+      "alternatives_considered": [
+        "marked + highlight.js + DOMPurify",
+        "markdown-it + PrismJS + DOMPurify"
+      ],
+      "decision_matrix_score": {
+        "license_compliance": 10,
+        "security_posture": 8,
+        "community_maintenance": 8,
+        "total_score": 236
+      }
+    },
+    {
+      "id": "ADR-006",
+      "title": "Error Reporting & Telemetry Providers",
+      "decision": "Use Sentry for crash/error reporting and PostHog for telemetry, with strict opt-in controls and API key isolation in Electron safeStorage.",
+      "alternatives_considered": [
+        "Sentry + PostHog",
+        "Bugsnag + Mixpanel"
+      ],
+      "decision_matrix_score": {
+        "license_compliance": 10,
+        "security_posture": 6,
+        "community_maintenance": 8,
+        "total_score": 226
+      }
+    },
+    {
+      "id": "ADR-007",
+      "title": "Spaced Repetition Algorithm Implementation",
+      "decision": "Use ts-fsrs as the TypeScript port of FSRS-5 to implement deterministic, local-first scheduling with a known reference implementation.",
+      "alternatives_considered": [
+        "ts-fsrs",
+        "Custom port of FSRS-5"
+      ],
+      "decision_matrix_score": {
+        "license_compliance": 10,
+        "security_posture": 8,
+        "community_maintenance": 7,
+        "total_score": 228
+      }
+    },
+    {
+      "id": "ADR-013",
+      "title": "Legacy Data Import & Global API Key Migration",
+      "decision": "On first launch of v2+, import legacy profiles into the new userData layout. Migrate the API key to a single global file at {userData}/.api_key (not per-profile), choosing the most recently modified legacy key if needed. All steps must be idempotent and crash-safe (temp dirs + atomic rename).",
+      "alternatives_considered": [
+        "Global API key at {userData}/.api_key",
+        "Per-profile API keys under profiles/*/.api_key"
+      ],
+      "decision_matrix_score": {
+        "license_compliance": 10,
+        "security_posture": 8,
+        "community_maintenance": 8,
+        "total_score": 226
+      }
+    },
+    {
+      "id": "ADR-014",
+      "title": "Curriculum Database Migration Policy",
+      "decision": "curriculum.db is replace-only (ship a signed bundle and swap atomically). No runtime schema migrations are executed against curriculum.db.",
+      "alternatives_considered": [
+        "Replace-only curriculum.db",
+        "Runtime schema migrations against curriculum.db"
+      ],
+      "decision_matrix_score": {
+        "license_compliance": 10,
+        "security_posture": 9,
+        "community_maintenance": 8,
+        "total_score": 230
+      }
+    },
+    {
+      "id": "ADR-015",
+      "title": "Progress Database Runtime Migration Policy",
+      "decision": "progress.db is migrated at runtime using a migration runner with a _migrations gate, transactional application (BEGIN IMMEDIATE + rollback on error), and guarded ALTER TABLE ADD COLUMN operations via PRAGMA table_info checks. Concurrency must be safe (single migrator proceeds).",
+      "alternatives_considered": [
+        "Runtime migrations with _migrations + transactions",
+        "Manual user resets / destructive upgrades"
+      ],
+      "decision_matrix_score": {
+        "license_compliance": 10,
+        "security_posture": 9,
+        "community_maintenance": 8,
+        "total_score": 232
+      }
+    }
+  ]
 }

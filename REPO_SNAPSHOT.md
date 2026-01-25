@@ -1,43 +1,71 @@
 # REPO_SNAPSHOT
 
-**Last Updated:** 2026-01-25T16:36:45.312Z
+**Last Updated:** 2026-01-25T16:53:19.592Z
 
 ## What this repo is
-**Avaia v2.0.0** — AI-powered programming education through evidence-based pedagogy. Desktop app (Electron-based) that combines interactive coding environments, spaced repetition (FSRS), and content delivery.
+No product summary found. Add a short summary in spec/prd.json.
 
 ## Core flows
-- Database migrations: `src/features/database-migrations/services/progress-migrations.ts`
-- User profile management: `src/features/profile-management/services/legacy-import.ts`
-- **PRD Status:** Empty (0 features defined in spec/prd.json)
+- FEAT-001: Profile Management System
+- FEAT-002: API Key Onboarding Wizard
+- FEAT-003: Curriculum Update Engine
+- FEAT-004: Session Lifecycle Manager
+- FEAT-005: FSRS-5 Spaced Repetition Engine
 
 ## Tech stack
-- **Frontend:** React 19, TypeScript, Vite, Tailwind CSS, Monaco Editor
-- **Desktop:** Electron 40, electron-builder
-- **Database:** better-sqlite3 (local SQLite)
-- **Sandbox:** WebContainer API (@webcontainer/api 1.6.1)
-- **Terminal:** xterm 6.0.0
-- **Utilities:** Zod (validation), FSRS (spaced repetition), marked (markdown), jszip
-- **Monitoring:** Sentry (error tracking), PostHog (analytics)
+- electron
+- electron-builder
+- better-sqlite3
+- typescript
+- react
+- react-dom
+- vite
+- tailwindcss
+- zod
+- @webcontainer/api
+- @xterm/xterm
+- monaco-editor-core
+- marked
+- highlight.js
+- dompurify
+- jszip
+- ts-fsrs
+- @sentry/electron
+- posthog-js
+- eslint
+- vitest
+- @types/node
+- @types/react
+- @types/react-dom
 
-## Current state
-- **Active source files:** 2 (database migrations, profile legacy import)
-- **Archived files:** 38 (old server/client code, migrations, seed scripts)
-- **Code graph:** 40 total nodes, 1 internal link (self-reference in progress-migrations)
-- **No drift:** Implementation and intent are aligned (empty intent = empty implementation)
+## Current risks / mismatches
+- FEAT-001: PRD feature has no ticket.
+- FEAT-002: PRD feature has no ticket.
+- FEAT-003: PRD feature has no ticket.
+- FEAT-004: PRD feature has no ticket.
+- FEAT-005: PRD feature has no ticket.
+- FEAT-005A: PRD feature has no ticket.
+- FEAT-006: PRD feature has no ticket.
+- FEAT-006A: PRD feature has no ticket.
+- FEAT-006B: PRD feature has no ticket.
+- FEAT-007: PRD feature has no ticket.
+- FEAT-008: PRD feature has no ticket.
+- FEAT-009: PRD feature has no ticket.
+- FEAT-009A: PRD feature has no ticket.
+- FEAT-010: PRD feature has no ticket.
+- FEAT-011: PRD feature has no ticket.
+- FEAT-012: PRD feature has no ticket.
+- FEAT-013: PRD feature has no ticket.
+- FEAT-014: PRD feature has no ticket.
+- FEAT-015: PRD feature has no ticket.
+- FEAT-016: PRD feature has no ticket.
 
 ## System health
-- Graph DB: 2026-01-25T16:34:53.022Z ✅
-- RAG Index: 2026-01-25T16:36:45.312Z ✅
-- Ollama: reachable ✅
-- **Tickets:** 0
-- **Tests:** 0
-
-## Recent activity
-- docs: add troubleshooting instructions for better-sqlite3 native module errors (e0f75df)
-- feat: initialize website structure with essential tools and documentation (b4f0f5a)
-- feat: Initialize project with v2 hybrid database schema, relocate core services (92784c9)
+- Graph DB: 2026-01-25T16:34:53.022Z
+- RAG Index: 2026-01-25T16:36:45.312Z
+- Ollama: reachable
 
 ## Truth model
-- **Implementation truth:** Codebase (40 files, 2 active TS modules)
-- **Intent truth:** spec/prd.json (0 features) + spec/stack.json (0 libraries defined)
-- **Drift status:** No drift detected (empty intent + empty implementation)
+- Implementation truth: codebase (graph + RAG)
+- Intent truth: spec/prd.json + spec/stack.json
+- Drift means intent and implementation are out of sync.

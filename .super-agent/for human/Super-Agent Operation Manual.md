@@ -31,7 +31,7 @@ If any of the above is required, output an **Operator Handoff Packet** with **St
 - You may NOT write to Neo4j. If you generate new knowledge that should be stored, output a **Memory Write Packet** for the Librarian.
 
 ### Neo4j read (required at start)
-`mcp__neo4j__search_memories({ query: "Active_Ticket OR Process OR Gates OR Artefacts OR Approvals", projectId: "SuperAgent_Init" })`
+`mcp__neo4j__search_memories({ query: "Active_Ticket OR Process OR Gates OR Artefacts OR Approvals", projectId: "Avaia Desktop" })`
 
 ### Memory Write Packet (for Librarian)
 - **Node type:** DecisionProposal | Artifact | Insight | Risk | TestResult | Doc
@@ -301,7 +301,7 @@ Before starting any phase, you **MUST** search Neo4j:
 ```javascript
 mcp__neo4j__search_memories({
   query: "ProjectIntent OR TechStack OR Architecture OR Ticket",
-  projectId: "SuperAgent_Init"
+  projectId: "Avaia Desktop"
 })
 ```
 
@@ -323,7 +323,7 @@ mcp__neo4j__create_memory({
     status: "COMPLETE",
     timestamp: Date.now(),
     artifacts: ["specs/architecture.json"],
-    projectId: "SuperAgent_Init"
+    projectId: "Avaia Desktop"
   }
 })
 
@@ -415,7 +415,7 @@ If a phase fails catastrophically:
 // Query the Neo4j log
 mcp__neo4j__search_memories({
   query: "PhaseCompletion { status: 'COMPLETE', phase: 'B3' }",
-  projectId: "SuperAgent_Init"
+  projectId: "Avaia Desktop"
 })
 
 // Find the last successful phase
@@ -438,7 +438,7 @@ cat CLAUDE.md | head -50
 ```javascript
 mcp__neo4j__search_memories({
   query: "PhaseCompletion { status: 'COMPLETE' }",
-  projectId: "SuperAgent_Init",
+  projectId: "Avaia Desktop",
   limit: 5
 })
 ```

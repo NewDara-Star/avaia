@@ -40,7 +40,7 @@ If any of the above is required, output an **Operator Handoff Packet** with **St
 - You do not contact other agents. You only respond to the Human Operator and the packets they relay.
 
 ### Neo4j read (required at start)
-`mcp__neo4j__search_memories({ query: "Active_Ticket OR DecisionProposal OR Artifact OR Architecture OR Stack", projectId: "SuperAgent_Init" })`
+`mcp__neo4j__search_memories({ query: "Active_Ticket OR DecisionProposal OR Artifact OR Architecture OR Stack", projectId: "Avaia Desktop" })`
 
 ### Neo4j write (only when instructed by operator)
 When the operator instructs you to store something, you will write it as Cypher and execute it via the Neo4j MCP tool.

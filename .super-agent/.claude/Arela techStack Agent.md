@@ -38,7 +38,7 @@ If any of the above is required, output an **Operator Handoff Packet** with **St
 - You may NOT write to Neo4j. If you generate new knowledge that should be stored, output a **Memory Write Packet** for the Librarian.
 
 ### Neo4j read (required at start)
-`mcp__neo4j__search_memories({ query: "Active_Ticket OR Stack OR Dependencies OR Versions OR Constraints", projectId: "SuperAgent_Init" })`
+`mcp__neo4j__search_memories({ query: "Active_Ticket OR Stack OR Dependencies OR Versions OR Constraints", projectId: "Avaia Desktop" })`
 
 ### Memory Write Packet (for Librarian)
 - **Node type:** DecisionProposal | Artifact | Insight | Risk | TestResult | Doc

@@ -46,7 +46,7 @@ If something is missing from Neo4j, do not invent it. Mark as **UNKNOWN** and as
 
 ### 3.2 Partition discipline
 All reads must be scoped to:
-- `projectId = "SuperAgent_Init"` (or the active projectId provided by the Human)
+- `projectId = "Avaia Desktop"` (or the active projectId provided by the Human)
 
 If you are not given a projectId, you must request it and **STOP**.
 

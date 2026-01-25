@@ -1,0 +1,66 @@
+{
+  "name": "avaia",
+  "version": "2.0.0",
+  "description": "AI-powered programming education through evidence-based pedagogy",
+  "main": "dist/main/index.js",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "lint": "eslint . --ext ts,tsx",
+    "test": "vitest",
+    "electron:dev": "electron .",
+    "electron:build": "electron-builder"
+  },
+  "dependencies": {
+    "@sentry/electron": "7.2.0",
+    "@webcontainer/api": "1.6.1",
+    "@xterm/xterm": "6.0.0",
+    "better-sqlite3": "12.6.2",
+    "dompurify": "3.3.1",
+    "electron": "40.0.0",
+    "highlight.js": "11.11.1",
+    "jszip": "3.10.1",
+    "marked": "17.0.1",
+    "monaco-editor-core": "0.55.1",
+    "posthog-js": "1.335.2",
+    "react": "19.2.3",
+    "react-dom": "19.2.3",
+    "tailwindcss": "4.1.18",
+    "ts-fsrs": "5.2.3",
+    "zod": "4.3.6"
+  },
+  "devDependencies": {
+    "@types/node": "25.0.10",
+    "@types/react": "19.2.9",
+    "@types/react-dom": "19.2.3",
+    "electron-builder": "26.4.0",
+    "eslint": "9.35.0",
+    "typescript": "5.9.3",
+    "vite": "7.1.9",
+    "vitest": "3.2.4"
+  },
+  "build": {
+    "appId": "com.avaia.desktop",
+    "productName": "Avaia",
+    "files": [
+      "dist/**/*",
+      "package.json"
+    ],
+    "directories": {
+      "output": "release"
+    },
+    "mac": {
+      "category": "public.app-category.education",
+      "target": ["dmg"]
+    },
+    "win": {
+      "target": ["nsis", "msi"]
+    },
+    "linux": {
+      "target": ["AppImage"],
+      "category": "Education"
+    }
+  }
+}

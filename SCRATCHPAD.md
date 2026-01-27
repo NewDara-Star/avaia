@@ -644,3 +644,125 @@ Created 4 per-phase tickets in `spec/tickets/`:
 ### Verification Status
 - [x] Bug 2: arela_update now works after arela_context (this update proves it)
 - [ ] Bug 1: Awaiting arela_graph_refresh test with new code
+
+---
+
+## Update: 2026-01-27T12:57:40.296Z
+
+
+### Bug 2 Verification (2026-01-27T13:00Z)
+✅ **CONFIRMED FIXED** - `arela_update` works immediately after `arela_context`. Session state now persists correctly between tool calls.
+
+
+---
+
+## Update: 2026-01-27T12:58:26.906Z
+
+
+### Bug 1 Verification (2026-01-27T13:01Z)
+✅ **CONFIRMED FIXED** - Graph parser now correctly resolves TypeScript imports.
+
+**Evidence:**
+- Import edges: 15 (was 1 self-ref bug)
+- Sample imports working:
+  - CreateProfileModal.tsx → useProfiles.ts ✅
+  - ProfileDropdown.tsx → CreateProfileModal.tsx ✅
+  - profile-service.ts → profiles-db.ts ✅
+  - main/index.ts → profile-ipc.ts ✅
+
+**Dependency Tracking Test:**
+```
+arela_graph_impact types.ts
+→ Upstream (7 files import it): CreateProfileModal, ProfileDropdown, useProfiles, profile-ipc, profile-service, preload, global.d.ts
+→ Downstream (0): types.ts imports nothing
+```
+
+**Result:** `arela_graph_impact` is now fully functional. Can track dependencies across the codebase.
+
+---
+
+## Session 9 Summary
+
+**Both Arela MCP bugs FIXED and VERIFIED:**
+
+1. ✅ **Bug 1 - Graph Parser Import Resolution**
+   - Before: 0 imports detected (except 1 bug)
+   - After: 15 imports correctly detected
+   - Fix: resolveFileCandidate now tries .ts/.tsx variants when .js/.jsx imports found
+
+2. ✅ **Bug 2 - Session State Persistence**
+   - Before: arela_update failed with "SESSION NOT INITIALIZED" after arela_context
+   - After: arela_update works immediately after arela_context
+   - Fix: arela_context handler now calls setSessionInitialized()
+
+**MCP Server Restart:** User reloaded VSCode window to apply compiled fixes.
+
+**Files Modified in /Users/Star/arela:**
+- slices/graph/indexer.ts
+- src/mcp/tools/types.ts  
+- src/mcp/tools/control.ts
+
+**Verification Date:** 2026-01-27T13:01Z
+
+
+---
+
+## Update: 2026-01-27T13:30:23.120Z
+
+
+## Session 10: Phase 1 Status Check (2026-01-27)
+**User Ask:** "is phase 1 complete?"
+**Actions:** Read `spec/tickets/FEAT-001-phase1-build-infrastructure.md`; verified presence of Status/COMPLETE via `arela_verify` (unicode checkmark string match failed, regex for "COMPLETE" succeeded).
+**Result:** Phase 1 (Build Infrastructure) ticket is marked COMPLETE with completion date 2026-01-25.
+
+
+---
+
+## Update: 2026-01-27T13:31:06.544Z
+
+**Addendum:** Verified `Completed ... 2026-01-25` line present in Phase 1 ticket via regex.
+
+
+---
+
+## Update: 2026-01-27T13:36:51.253Z
+
+
+## Session 11: Graph/Index Refresh Attempt (2026-01-27)
+**User Ask:** "check the graph and index, update them first if they are stale"
+**Checks:** Read `.arela/dashboard.json` → graphUpdatedAt 2026-01-25T16:34:53Z, ragUpdatedAt 2026-01-25T16:36:45Z (stale vs today 2026-01-27).
+**Actions:** Ran `arela_graph_refresh` (success, 17 files). Ran `arela_vector_index` twice (parallel + sequential) → both timed out after 60s.
+**Investigation:** `ls -lh .arela` shows only `dashboard.json` and `graph.db` (graph.db updated at 2026-01-27 13:33). No local rag index file visible.
+**Blocker:** Vector index refresh failing due to tool timeout; suspect long-running index job or server-side stall. Need operator decision to retry or inspect server logs/increase timeout.
+**Note:** `log_symptom` tool call failed with MCP error (invalid input expected object). Logged manually here.
+
+
+---
+
+## Update: 2026-01-27T13:39:16.462Z
+
+
+## Session 12: CLI Run Question (2026-01-27)
+**User Ask:** "how can i run it on my cli?"
+**Action:** Verified npm scripts in package.json (dev, build, electron:dev) and main process dev/prod loading behavior in src/main/index.ts. Preparing to respond with CLI run instructions + clarification about whether they meant app or graph/index refresh.
+
+
+---
+
+## Update: 2026-01-27T13:40:44.621Z
+
+
+## Session 13: CLI Command Confirmation (2026-01-27)
+**User:** Confirmed `arela init` runs graph + RAG indexing (saw progress output).
+**Response Plan:** Acknowledge `arela init` is the CLI command; advise to let it finish and note it can be re-run to refresh graph/RAG; offer other CLI commands if needed.
+
+
+---
+
+## Update: 2026-01-27T13:42:54.872Z
+
+
+## Session 14: Lighter-weight CLI Commands (2026-01-27)
+**User Ask:** Wants lighter-weight CLI commands than `arela init`.
+**Finding:** Arela CLI already provides `graph refresh` and `vector reindex` subcommands in `/Users/Star/arela/src/cli.ts`.
+**Planned Response:** Use `arela graph refresh` (graph only) and `arela vector reindex` (RAG only); optional `arela vector search <query>` and `arela status`.

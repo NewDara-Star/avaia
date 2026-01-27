@@ -115,6 +115,8 @@ Ask your AI:
 
 This loads `AGENTS.md` and `SCRATCHPAD.md` into the AI's memory.
 
+**Note:** `arela init` writes `AGENTS.md` from a minimal template (repo‑agnostic rules). You can edit it for repo‑specific policies.
+
 ### Optional: External Specs Folder
 If you use JSON specs, place them under `spec/`:
 - `spec/prd.json` (supported by `arela_prd` via `parse-json`, `json-features`, `json-feature`)

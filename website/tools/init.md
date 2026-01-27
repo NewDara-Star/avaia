@@ -16,7 +16,7 @@ arela init --dashboard
 
 ## What it does
 - Creates/updates `.mcp.json` for the current repo
-- Writes the constitution into `AGENTS.md`
+- Writes the constitution into `AGENTS.md` (from template)
 - Writes a Claude-friendly copy into `.claude/CLAUDE.md` (overwrites)
 - Copies `prompts/` into the repo
 - Scaffolds `website/` (dashboard site) into the repo

@@ -1,6 +1,6 @@
 # REPO_SNAPSHOT
 
-**Last Updated:** 2026-01-25T16:53:19.592Z
+**Last Updated:** 2026-01-27T14:21:54.896Z
 
 ## What this repo is
 No product summary found. Add a short summary in spec/prd.json.
@@ -39,7 +39,7 @@ No product summary found. Add a short summary in spec/prd.json.
 - @types/react-dom
 
 ## Current risks / mismatches
-- FEAT-001: PRD feature has no ticket.
+- FEAT-001: Ticket exists but no test found.
 - FEAT-002: PRD feature has no ticket.
 - FEAT-003: PRD feature has no ticket.
 - FEAT-004: PRD feature has no ticket.
@@ -61,8 +61,8 @@ No product summary found. Add a short summary in spec/prd.json.
 - FEAT-016: PRD feature has no ticket.
 
 ## System health
-- Graph DB: 2026-01-25T16:34:53.022Z
-- RAG Index: 2026-01-25T16:36:45.312Z
+- Graph DB: 2026-01-27T13:39:49.994Z
+- RAG Index: 2026-01-27T14:21:54.778Z
 - Ollama: reachable
 
 ## Truth model

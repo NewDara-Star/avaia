@@ -11,10 +11,10 @@
 
 ## Context
 
-28 Gherkin scenarios and 426 lines of step definitions exist but have **never been executed**. The profile backend is complete, components exist, but end-to-end flows have never been tested in a running Electron app. Phase 2 creates the app shell — this phase verifies everything actually works together.
+14 Gherkin scenario blocks (1 outline with 7 examples; 20 expanded cases) and 426 lines of step definitions exist but have **never been executed**. The profile backend is complete, components exist, but end-to-end flows have never been tested in a running Electron app. Phase 2 creates the app shell — this phase verifies everything actually works together.
 
 **What exists:**
-- ✅ `spec/tests/features/profile-management.feature` — 28 scenarios
+- ✅ `spec/tests/features/profile-management.feature` — 14 scenario blocks (1 outline + 7 examples)
 - ✅ `spec/tests/steps/profile-management.steps.ts` — 426 lines step defs
 - ✅ Backend services (profiles-db, profile-service, profile-ipc)
 - ✅ React components (ProfileDropdown, CreateProfileModal)
@@ -144,10 +144,10 @@ npx cucumber-js spec/tests/features/profile-management.feature
 ```
 
 **AC:**
-- [ ] All @critical scenarios pass (9 scenarios)
-- [ ] All @security scenarios pass (8 scenarios)
-- [ ] @first-run scenarios pass (3 scenarios)
-- [ ] @profile-deletion scenarios pass (2 scenarios)
+- [ ] All @critical scenarios pass (7 scenario blocks / 13 expanded cases)
+- [ ] All @security scenarios pass (2 scenario blocks)
+- [ ] @first-run scenarios pass (1 scenario block)
+- [ ] @profile-deletion scenarios pass (3 scenario blocks)
 
 **If tests fail:**
 - Update step definitions in `spec/tests/steps/profile-management.steps.ts`

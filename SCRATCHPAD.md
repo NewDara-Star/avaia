@@ -777,3 +777,86 @@ arela_graph_impact types.ts
 **User Ask:** Update tech stack section to match spec/stack.json.
 **Action:** Replaced outdated stack entries in `AGENTS.md` and `Rules.md` with the actual stack (TypeScript 5.9.3, Node 24.13.0, Electron 40, React 19.2.3, Vite 7.1.9, Tailwind 4.1.18, better-sqlite3 12.6.2, Zod 4.3.6, Vitest 3.2.4, ESLint 9.35.0, plus listed utilities/types).
 **Note:** `.claude/CLAUDE.md` does not currently contain a Tech Stack section; can mirror if desired.
+
+
+---
+
+## Update: 2026-01-27T14:23:28.601Z
+
+
+## Session 16: Arela Init Done (2026-01-27)
+**User Update:** `arela init` completed.
+**Next:** Offer to verify graph/RAG freshness via dashboard/status or proceed to next task.
+
+
+---
+
+## Update: 2026-01-27T14:24:16.520Z
+
+
+## Session 17: Verify Graph + RAG Freshness (2026-01-27)
+**Action:** Read `.arela/dashboard.json` after user confirmed `arela init` completed.
+**Result:** graphUpdatedAt = 2026-01-27T13:39:49.994Z; ragUpdatedAt = 2026-01-27T14:21:54.778Z; dashboard generated at 2026-01-27T14:21:54.896Z. Graph/RAG are fresh.
+
+
+---
+
+## Update: 2026-01-27T14:25:45.913Z
+
+
+## Session 18: Phase 1 + Graph/RAG Check (2026-01-27)
+**User Ask:** Check Phase 1 done and check RAG/graph.
+**Actions:** Read `spec/tickets/FEAT-001-phase1-build-infrastructure.md` and `.arela/dashboard.json`. Verified ticket status COMPLETE and dashboard timestamps.
+**Result:** Phase 1 ticket marked ✅ COMPLETE. Graph/RAG are fresh: graphUpdatedAt 2026-01-27T13:39:49.994Z; ragUpdatedAt 2026-01-27T14:21:54.778Z.
+
+
+---
+
+## Update: 2026-01-27T14:27:16.168Z
+
+
+## Session 19: Phase 1 Graph Existence Check (2026-01-27)
+**User Ask:** Verify Phase 1 functions/files exist in graph.
+**Actions:** Verified dashboard graph contains src/main/index.ts, src/renderer/preload.ts, src/types/global.d.ts, vite.config.ts; verified those files exist on disk.
+**Result:** All Phase 1 files are present and indexed in the graph.
+
+
+---
+
+## Update: 2026-01-27T14:29:24.932Z
+
+
+## Session 20: Phase 2 Go-Ahead + Test Count Check (2026-01-27)
+**User Ask:** Can proceed with Phase 2; why dashboard says FEAT-001 missing test vs "28 tests".
+**Findings:** Phase 2 ticket `spec/tickets/FEAT-001-phase2-react-app-shell.md` is NOT STARTED and depends on Phase 1 (complete) → OK to proceed. Current feature file `spec/tests/features/profile-management.feature` contains 14 Scenario/Scenario Outline entries; Scenario Outline has 7 examples. Dashboard lists one test feature with 14 scenarios. Drift still flags missing test for FEAT-001, likely because test file isn’t linked to feature ID (no FEAT-001 tag/name).
+
+
+---
+
+## Update: 2026-01-27T14:31:08.148Z
+
+
+## Session 21: Locate FEAT-001 Tests (2026-01-27)
+**User Ask:** "check where the tests are" and reconcile 28 tests claim.
+**Findings:** Only test feature file is `spec/tests/features/profile-management.feature`; only steps file is `spec/tests/steps/profile-management.steps.ts` (426 lines). Feature file has 14 Scenario/Scenario Outline blocks (rg count). Tickets/SCRATCHPAD reference 28 scenarios, but current file does not match; likely older version or edited down. No other .feature files found.
+
+
+---
+
+## Update: 2026-01-27T14:39:53.051Z
+
+
+## Session 22: Test History + Reconcile Counts (2026-01-27)
+**User Ask:** Find 28-scenario version in git history; if not, reconcile docs/tickets to current 14.
+**Finding:** `git log -- spec/tests/features/profile-management.feature` shows only commit 23b8ebc; that version already has 14 Scenario/Outline blocks. No 28-scenario version in git history.
+**Edits:** Updated `spec/tickets/FEAT-001-phase3-integration-testing.md` to reflect 14 scenario blocks (1 outline + 7 examples; 20 expanded cases) and corrected tag counts; updated archived ticket line in `spec/tickets/archive/FEAT-001-profile-management-integration.md` to match.
+
+
+---
+
+## Update: 2026-01-27T14:43:09.659Z
+
+
+## Session 23: Phase 2 Go/No-Go (2026-01-27)
+**User Ask:** "are you we good to proceed with phase 2?"
+**Response:** Yes — Phase 1 ticket marked COMPLETE and Phase 2 depends on Phase 1; green light to proceed.

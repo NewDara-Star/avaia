@@ -1,175 +1,154 @@
 {
-  "generated": "2026-01-25T16:55:18.607Z",
+  "generated": "2026-01-27T14:21:54.896Z",
+  "errors": [],
   "stats": {
-    "files": 40,
-    "links": 1
+    "files": 17,
+    "links": 15
   },
   "nodes": [
     {
-      "id": "archive/bin/avaia.ts",
-      "group": "archive"
+      "id": "eslint.config.js",
+      "group": "eslint.config.js"
     },
     {
-      "id": "archive/gui/static/shared.js",
-      "group": "archive"
-    },
-    {
-      "id": "archive/gui/static/socket.io.min.js",
-      "group": "archive"
-    },
-    {
-      "id": "archive/gui/venv/lib/python3.14/site-packages/webview/js/api.js",
-      "group": "archive"
-    },
-    {
-      "id": "archive/gui/venv/lib/python3.14/site-packages/webview/js/customize.js",
-      "group": "archive"
-    },
-    {
-      "id": "archive/gui/venv/lib/python3.14/site-packages/webview/js/finish.js",
-      "group": "archive"
-    },
-    {
-      "id": "archive/gui/venv/lib/python3.14/site-packages/webview/js/lib/dom_json.js",
-      "group": "archive"
-    },
-    {
-      "id": "archive/gui/venv/lib/python3.14/site-packages/webview/js/lib/polyfill.js",
-      "group": "archive"
-    },
-    {
-      "id": "archive/gui/venv/lib/python3.14/site-packages/webview/js/state.js",
-      "group": "archive"
-    },
-    {
-      "id": "archive/gui/venv/lib/python3.14/site-packages/werkzeug/debug/shared/debugger.js",
-      "group": "archive"
-    },
-    {
-      "id": "archive/scripts/generate-seed-sql.ts",
-      "group": "archive"
-    },
-    {
-      "id": "archive/scripts/generate-track-sql.ts",
-      "group": "archive"
-    },
-    {
-      "id": "archive/scripts/migrate.ts",
-      "group": "archive"
-    },
-    {
-      "id": "archive/scripts/seed-all-tracks.ts",
-      "group": "archive"
-    },
-    {
-      "id": "archive/scripts/seed-avaia-core.ts",
-      "group": "archive"
-    },
-    {
-      "id": "archive/scripts/seed-c-systems.ts",
-      "group": "archive"
-    },
-    {
-      "id": "archive/scripts/seed-cs-theory.ts",
-      "group": "archive"
-    },
-    {
-      "id": "archive/scripts/seed-dsa-curriculum.ts",
-      "group": "archive"
-    },
-    {
-      "id": "archive/scripts/seed-js-curriculum.ts",
-      "group": "archive"
-    },
-    {
-      "id": "archive/scripts/seed-ml-engineering.ts",
-      "group": "archive"
-    },
-    {
-      "id": "archive/scripts/seed-python-data.ts",
-      "group": "archive"
-    },
-    {
-      "id": "archive/scripts/seed-software-engineering.ts",
-      "group": "archive"
-    },
-    {
-      "id": "archive/scripts/seed.ts",
-      "group": "archive"
-    },
-    {
-      "id": "archive/scripts/test-all-tools.ts",
-      "group": "archive"
-    },
-    {
-      "id": "archive/src/client/index.ts",
-      "group": "archive"
-    },
-    {
-      "id": "archive/src/server/db/index.ts",
-      "group": "archive"
-    },
-    {
-      "id": "archive/src/server/index.ts",
-      "group": "archive"
-    },
-    {
-      "id": "archive/src/server/lib/emotions.ts",
-      "group": "archive"
-    },
-    {
-      "id": "archive/src/server/lib/fsrs.ts",
-      "group": "archive"
-    },
-    {
-      "id": "archive/src/server/seed.ts",
-      "group": "archive"
-    },
-    {
-      "id": "archive/src/server/tools/content.ts",
-      "group": "archive"
-    },
-    {
-      "id": "archive/src/server/tools/project.ts",
-      "group": "archive"
-    },
-    {
-      "id": "archive/src/server/tools/sandbox.ts",
-      "group": "archive"
-    },
-    {
-      "id": "archive/src/server/tools/session.ts",
-      "group": "archive"
-    },
-    {
-      "id": "archive/src/server/tools/srs.ts",
-      "group": "archive"
-    },
-    {
-      "id": "archive/src/server/tools/track.ts",
-      "group": "archive"
-    },
-    {
-      "id": "archive/src/server/tools/verify.ts",
-      "group": "archive"
-    },
-    {
-      "id": "archive/src/server/types/index.ts",
-      "group": "archive"
+      "id": "spec/tests/steps/profile-management.steps.ts",
+      "group": "spec"
     },
     {
       "id": "src/features/database-migrations/services/progress-migrations.ts",
       "group": "src"
     },
     {
+      "id": "src/features/profile-management/components/CreateProfileModal.tsx",
+      "group": "src"
+    },
+    {
+      "id": "src/features/profile-management/hooks/useProfiles.ts",
+      "group": "src"
+    },
+    {
+      "id": "src/features/profile-management/types.ts",
+      "group": "src"
+    },
+    {
+      "id": "src/features/profile-management/components/ProfileDropdown.tsx",
+      "group": "src"
+    },
+    {
       "id": "src/features/profile-management/services/legacy-import.ts",
       "group": "src"
+    },
+    {
+      "id": "src/features/profile-management/services/profile-ipc.ts",
+      "group": "src"
+    },
+    {
+      "id": "src/features/profile-management/services/profile-service.ts",
+      "group": "src"
+    },
+    {
+      "id": "src/features/profile-management/services/profiles-db.ts",
+      "group": "src"
+    },
+    {
+      "id": "src/main/index.ts",
+      "group": "src"
+    },
+    {
+      "id": "src/main.tsx",
+      "group": "src"
+    },
+    {
+      "id": "src/renderer/preload.ts",
+      "group": "src"
+    },
+    {
+      "id": "src/types/better-sqlite3.d.ts",
+      "group": "src"
+    },
+    {
+      "id": "src/types/global.d.ts",
+      "group": "src"
+    },
+    {
+      "id": "vite.config.ts",
+      "group": "vite.config.ts"
     }
   ],
   "links": [
     {
       "source": "src/features/database-migrations/services/progress-migrations.ts",
       "target": "src/features/database-migrations/services/progress-migrations.ts",
+      "type": "static"
+    },
+    {
+      "source": "src/features/profile-management/components/CreateProfileModal.tsx",
+      "target": "src/features/profile-management/hooks/useProfiles.ts",
+      "type": "static"
+    },
+    {
+      "source": "src/features/profile-management/components/CreateProfileModal.tsx",
+      "target": "src/features/profile-management/types.ts",
+      "type": "static"
+    },
+    {
+      "source": "src/features/profile-management/components/ProfileDropdown.tsx",
+      "target": "src/features/profile-management/hooks/useProfiles.ts",
+      "type": "static"
+    },
+    {
+      "source": "src/features/profile-management/components/ProfileDropdown.tsx",
+      "target": "src/features/profile-management/components/CreateProfileModal.tsx",
+      "type": "static"
+    },
+    {
+      "source": "src/features/profile-management/components/ProfileDropdown.tsx",
+      "target": "src/features/profile-management/types.ts",
+      "type": "static"
+    },
+    {
+      "source": "src/features/profile-management/hooks/useProfiles.ts",
+      "target": "src/features/profile-management/types.ts",
+      "type": "static"
+    },
+    {
+      "source": "src/features/profile-management/services/profile-ipc.ts",
+      "target": "src/features/profile-management/services/profile-service.ts",
+      "type": "static"
+    },
+    {
+      "source": "src/features/profile-management/services/profile-ipc.ts",
+      "target": "src/features/profile-management/types.ts",
+      "type": "static"
+    },
+    {
+      "source": "src/features/profile-management/services/profile-service.ts",
+      "target": "src/features/profile-management/types.ts",
+      "type": "static"
+    },
+    {
+      "source": "src/features/profile-management/services/profile-service.ts",
+      "target": "src/features/profile-management/services/profiles-db.ts",
+      "type": "static"
+    },
+    {
+      "source": "src/main/index.ts",
+      "target": "src/features/profile-management/services/profile-ipc.ts",
+      "type": "static"
+    },
+    {
+      "source": "src/main/index.ts",
+      "target": "src/features/profile-management/services/legacy-import.ts",
+      "type": "static"
+    },
+    {
+      "source": "src/renderer/preload.ts",
+      "target": "src/features/profile-management/types.ts",
+      "type": "static"
+    },
+    {
+      "source": "src/types/global.d.ts",
+      "target": "src/features/profile-management/types.ts",
       "type": "static"
     }
   ],
@@ -365,26 +344,92 @@
   },
   "tickets": {
     "path": "spec/tickets",
-    "total": 0,
-    "byStatus": {},
-    "items": []
+    "total": 5,
+    "byStatus": {
+      "open": 5
+    },
+    "items": [
+      {
+        "id": "FEAT-001-phase4-polish-documentation",
+        "status": "open",
+        "featureId": "FEAT-001",
+        "path": "spec/tickets/FEAT-001-phase4-polish-documentation.md"
+      },
+      {
+        "id": "FEAT-001-phase3-integration-testing",
+        "status": "open",
+        "featureId": "FEAT-001",
+        "path": "spec/tickets/FEAT-001-phase3-integration-testing.md"
+      },
+      {
+        "id": "FEAT-001-phase2-react-app-shell",
+        "status": "open",
+        "featureId": "FEAT-001",
+        "path": "spec/tickets/FEAT-001-phase2-react-app-shell.md"
+      },
+      {
+        "id": "FEAT-001-phase1-build-infrastructure",
+        "status": "open",
+        "featureId": "FEAT-001",
+        "path": "spec/tickets/FEAT-001-phase1-build-infrastructure.md"
+      },
+      {
+        "id": "FEAT-001-profile-management-integration",
+        "status": "open",
+        "featureId": "FEAT-001",
+        "path": "spec/tickets/archive/FEAT-001-profile-management-integration.md"
+      }
+    ]
   },
   "tests": {
     "path": "spec/tests/features",
-    "total": 0,
-    "features": [],
+    "total": 1,
+    "features": [
+      {
+        "id": "profile-management",
+        "name": "Profile Management System",
+        "scenarios": 14,
+        "path": "spec/tests/features/profile-management.feature",
+        "status": "unknown"
+      }
+    ],
     "results": []
   },
   "changes": {
-    "modified": [
-      "REPO_SNAPSHOT.md",
-      "spec/prd.json",
-      "spec/stack.json",
-      "website/public/dashboard.json"
-    ],
+    "modified": [],
     "added": [],
     "deleted": [],
     "commits": [
+      {
+        "hash": "f32e55a",
+        "date": "2026-01-27 14:14:32 +0000",
+        "message": "feat: update AGENTS.md and SCRATCHPAD.md with new tech stack details and operational rules"
+      },
+      {
+        "hash": "cb3b7d1",
+        "date": "2026-01-27 14:01:04 +0000",
+        "message": "Refactor AGENTS.md and windsurfrules for clarity and consistency; update SCRATCHPAD.md with bug verification details; enhance getting-started and init documentation to clarify AGENTS.md generation from template."
+      },
+      {
+        "hash": "b687023",
+        "date": "2026-01-27 12:53:41 +0000",
+        "message": "feat: Implement Phase 1-4 of Profile Management System"
+      },
+      {
+        "hash": "6df15f9",
+        "date": "2026-01-25 22:20:46 +0000",
+        "message": "feat: integrate profile management system with IPC bridge and React components"
+      },
+      {
+        "hash": "23b8ebc",
+        "date": "2026-01-25 17:12:43 +0000",
+        "message": "feat(profile-management): implement profile management system with IPC integration"
+      },
+      {
+        "hash": "b4122f1",
+        "date": "2026-01-25 16:55:21 +0000",
+        "message": "feat: update stack and dashboard specifications with comprehensive library details and feature prioritization"
+      },
       {
         "hash": "263edf8",
         "date": "2026-01-25 16:48:10 +0000",
@@ -404,42 +449,209 @@
         "hash": "b4f0f5a",
         "date": "2026-01-25 15:13:10 +0000",
         "message": "feat: initialize website structure with essential tools and documentation"
-      },
-      {
-        "hash": "92784c9",
-        "date": "2026-01-25 01:06:26 +0000",
-        "message": "feat: Initialize project with v2 hybrid database schema, relocate core services, and update project IDs."
-      },
-      {
-        "hash": "c99c159",
-        "date": "2026-01-24 23:30:38 +0000",
-        "message": "reboot"
-      },
-      {
-        "hash": "3c8471c",
-        "date": "2026-01-20 00:46:09 +0000",
-        "message": "made v1.7.0"
-      },
-      {
-        "hash": "82b5a6c",
-        "date": "2026-01-19 23:19:05 +0000",
-        "message": "fix: Use server_webview.py instead of server.py in py2app build"
-      },
-      {
-        "hash": "d0c0d22",
-        "date": "2026-01-19 23:16:06 +0000",
-        "message": "fix: Remove automatic database migration at startup"
-      },
-      {
-        "hash": "a2b14d9",
-        "date": "2026-01-19 23:07:43 +0000",
-        "message": "fix: Bundle SQL migrations with built app to prevent setup loop"
       }
     ]
   },
   "system": {
-    "graphUpdatedAt": "2026-01-25T16:34:53.022Z",
-    "ragUpdatedAt": "2026-01-25T16:36:45.312Z",
+    "graphUpdatedAt": "2026-01-27T13:39:49.994Z",
+    "ragUpdatedAt": "2026-01-27T14:21:54.778Z",
     "ollama": true
+  },
+  "drift": {
+    "summary": {
+      "missingTickets": 36,
+      "missingTests": 1,
+      "missingImplementation": 0,
+      "closedButFailing": 0,
+      "orphanTickets": 0,
+      "orphanTests": 0
+    },
+    "items": [
+      {
+        "featureId": "FEAT-001",
+        "type": "missing-test",
+        "detail": "Ticket exists but no test found."
+      },
+      {
+        "featureId": "FEAT-002",
+        "type": "missing-ticket",
+        "detail": "PRD feature has no ticket."
+      },
+      {
+        "featureId": "FEAT-003",
+        "type": "missing-ticket",
+        "detail": "PRD feature has no ticket."
+      },
+      {
+        "featureId": "FEAT-004",
+        "type": "missing-ticket",
+        "detail": "PRD feature has no ticket."
+      },
+      {
+        "featureId": "FEAT-005",
+        "type": "missing-ticket",
+        "detail": "PRD feature has no ticket."
+      },
+      {
+        "featureId": "FEAT-005A",
+        "type": "missing-ticket",
+        "detail": "PRD feature has no ticket."
+      },
+      {
+        "featureId": "FEAT-006",
+        "type": "missing-ticket",
+        "detail": "PRD feature has no ticket."
+      },
+      {
+        "featureId": "FEAT-006A",
+        "type": "missing-ticket",
+        "detail": "PRD feature has no ticket."
+      },
+      {
+        "featureId": "FEAT-006B",
+        "type": "missing-ticket",
+        "detail": "PRD feature has no ticket."
+      },
+      {
+        "featureId": "FEAT-007",
+        "type": "missing-ticket",
+        "detail": "PRD feature has no ticket."
+      },
+      {
+        "featureId": "FEAT-008",
+        "type": "missing-ticket",
+        "detail": "PRD feature has no ticket."
+      },
+      {
+        "featureId": "FEAT-009",
+        "type": "missing-ticket",
+        "detail": "PRD feature has no ticket."
+      },
+      {
+        "featureId": "FEAT-009A",
+        "type": "missing-ticket",
+        "detail": "PRD feature has no ticket."
+      },
+      {
+        "featureId": "FEAT-010",
+        "type": "missing-ticket",
+        "detail": "PRD feature has no ticket."
+      },
+      {
+        "featureId": "FEAT-011",
+        "type": "missing-ticket",
+        "detail": "PRD feature has no ticket."
+      },
+      {
+        "featureId": "FEAT-012",
+        "type": "missing-ticket",
+        "detail": "PRD feature has no ticket."
+      },
+      {
+        "featureId": "FEAT-013",
+        "type": "missing-ticket",
+        "detail": "PRD feature has no ticket."
+      },
+      {
+        "featureId": "FEAT-014",
+        "type": "missing-ticket",
+        "detail": "PRD feature has no ticket."
+      },
+      {
+        "featureId": "FEAT-015",
+        "type": "missing-ticket",
+        "detail": "PRD feature has no ticket."
+      },
+      {
+        "featureId": "FEAT-016",
+        "type": "missing-ticket",
+        "detail": "PRD feature has no ticket."
+      },
+      {
+        "featureId": "FEAT-017",
+        "type": "missing-ticket",
+        "detail": "PRD feature has no ticket."
+      },
+      {
+        "featureId": "FEAT-018",
+        "type": "missing-ticket",
+        "detail": "PRD feature has no ticket."
+      },
+      {
+        "featureId": "FEAT-019",
+        "type": "missing-ticket",
+        "detail": "PRD feature has no ticket."
+      },
+      {
+        "featureId": "FEAT-020",
+        "type": "missing-ticket",
+        "detail": "PRD feature has no ticket."
+      },
+      {
+        "featureId": "FEAT-021",
+        "type": "missing-ticket",
+        "detail": "PRD feature has no ticket."
+      },
+      {
+        "featureId": "FEAT-022",
+        "type": "missing-ticket",
+        "detail": "PRD feature has no ticket."
+      },
+      {
+        "featureId": "FEAT-023",
+        "type": "missing-ticket",
+        "detail": "PRD feature has no ticket."
+      },
+      {
+        "featureId": "FEAT-024",
+        "type": "missing-ticket",
+        "detail": "PRD feature has no ticket."
+      },
+      {
+        "featureId": "FEAT-025",
+        "type": "missing-ticket",
+        "detail": "PRD feature has no ticket."
+      },
+      {
+        "featureId": "FEAT-026",
+        "type": "missing-ticket",
+        "detail": "PRD feature has no ticket."
+      },
+      {
+        "featureId": "FEAT-027",
+        "type": "missing-ticket",
+        "detail": "PRD feature has no ticket."
+      },
+      {
+        "featureId": "FEAT-028",
+        "type": "missing-ticket",
+        "detail": "PRD feature has no ticket."
+      },
+      {
+        "featureId": "FEAT-029",
+        "type": "missing-ticket",
+        "detail": "PRD feature has no ticket."
+      },
+      {
+        "featureId": "FEAT-030",
+        "type": "missing-ticket",
+        "detail": "PRD feature has no ticket."
+      },
+      {
+        "featureId": "FEAT-031",
+        "type": "missing-ticket",
+        "detail": "PRD feature has no ticket."
+      },
+      {
+        "featureId": "FEAT-032",
+        "type": "missing-ticket",
+        "detail": "PRD feature has no ticket."
+      },
+      {
+        "featureId": "FEAT-033",
+        "type": "missing-ticket",
+        "detail": "PRD feature has no ticket."
+      }
+    ]
   }
 }

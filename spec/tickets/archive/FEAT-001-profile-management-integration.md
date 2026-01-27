@@ -15,7 +15,7 @@ The profile management backend, UI components, and tests are **100% complete**, 
 - ✅ Backend services (profiles-db, profile-service, profile-ipc, legacy-import)
 - ✅ React components (ProfileDropdown, CreateProfileModal)
 - ✅ State management (useProfiles hook)
-- ✅ 28 Gherkin acceptance tests + step definitions
+- ✅ Gherkin acceptance tests + step definitions (currently 14 scenario blocks; 1 outline with 7 examples)
 
 **What's broken/missing:**
 - ❌ Main process has TypeScript errors (dynamic loading pattern incomplete)

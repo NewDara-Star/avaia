@@ -1934,3 +1934,22 @@ These tell Node.js to treat files in those directories as CommonJS, even though 
 **Solution:** Added `base: './'` to `vite.config.ts` so Vite outputs relative paths (`./assets/...`).
 **Verification:** Rebuilt successfully; `dist/index.html` now contains `src="./assets/..."` and `href="./assets/..."`.
 **Files changed:** `vite.config.ts`
+
+---
+
+## Update: 2026-01-27T21:24:18.492Z
+
+## Session End: 2026-01-27
+**Work done:**
+- Fixed Electron blank screen (added `base: './'` to vite.config.ts)
+- Rebuilt better-sqlite3 for Electron (`npx @electron/rebuild`)
+- Profile creation confirmed working end-to-end
+- Generated 3 tickets for FEAT-002 (API Key Onboarding Wizard):
+  - P1: API Key Storage & Encryption
+  - P2: Onboarding Wizard UI
+  - P3: Settings Key Management
+
+**Next session priorities:**
+1. FEAT-001 P3: Manual smoke tests (creation, switching, deletion, data isolation)
+2. FEAT-001 P4: Profile persistence across restarts + documentation
+3. Begin FEAT-002 P1: API key storage backend

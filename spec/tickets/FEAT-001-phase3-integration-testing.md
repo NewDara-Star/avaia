@@ -16,7 +16,7 @@
 **What exists:**
 - ✅ `spec/tests/features/profile-management.feature` — 14 scenario blocks (1 outline + 7 examples)
 - ✅ `spec/tests/steps/profile-management.steps.ts` — 426 lines step defs
-- ✅ Backend services (profiles-db, profile-service, profile-ipc)
+- ✅ Backend services (progress-db, profile-service, profile-ipc)
 - ✅ React components (ProfileDropdown, CreateProfileModal)
 - ✅ Electron main process + preload bridge
 
@@ -140,7 +140,7 @@
 
 **Command:**
 ```bash
-npx cucumber-js spec/tests/features/profile-management.feature
+npx cucumber-js --require-module tsx --require 'spec/tests/steps/*.ts' spec/tests/features/profile-management.feature
 ```
 
 **AC:**

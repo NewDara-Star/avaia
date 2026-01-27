@@ -9,6 +9,7 @@ declare module 'better-sqlite3' {
     constructor(path: string, options?: any);
     prepare(sql: string): Statement;
     pragma(pragma: string): any;
+    exec(sql: string): void;
     close(): void;
   }
 

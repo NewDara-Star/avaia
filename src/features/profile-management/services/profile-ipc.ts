@@ -170,19 +170,10 @@ export async function initializeProfileSystem(): Promise<void> {
     const profiles = listProfiles();
 
     if (profiles.length === 0) {
-      console.log("No profiles found, this is first launch");
-      // Create default first profile
-      const result = createProfile({
-        name: "My Profile",
-        avatar: "🚀",
-      });
-
-      if (result.success) {
-        setCurrentProfileId(result.data.id);
-        console.log(`Created default profile: ${result.data.id}`);
-      } else {
-        console.error(`Failed to create default profile: ${result.error}`);
-      }
+      console.log("No profiles found, this is first launch - user will see welcome screen");
+      // Do NOT auto-create a profile here
+      // Let the welcome screen (App.tsx) drive first profile creation
+      // This ensures the user sees the intended first-run experience from the PRD
     } else {
       // Load last opened profile
       const lastOpened = profiles[0];

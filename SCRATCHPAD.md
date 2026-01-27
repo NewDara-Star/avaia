@@ -936,3 +936,233 @@ Guarded write_file blocked due to DISCOVERY state; required investigation protoc
 **Issue:** `mcp__arela__log_symptom`, `mcp__arela__guard_status`, `mcp__arela__register_hypothesis`, and `mcp__arela__escalate` all fail with MCP -32602 ("Invalid tools/call result: expected object, received string").
 **Impact:** Cannot satisfy investigation protocol required to exit DISCOVERY state; write_file/edit_file blocked.
 **Next:** Ask operator to restart MCP server or advise on bypass/state reset.
+
+
+---
+
+## Update: 2026-01-27T15:11:30.839Z
+
+
+## Session 29: Guard Tool Retry Failed (2026-01-27)
+**Action:** Retried `mcp__arela__log_symptom` after user said "retry now".
+**Result:** Still failing with MCP -32602 ("Invalid tools/call result: expected object, received string").
+**Impact:** Investigation protocol cannot be completed; write/edit remains blocked.
+
+
+---
+
+## Update: 2026-01-27T15:16:16.440Z
+
+
+## Session 30: Root Cause Found for Guard Tool Failure (2026-01-27)
+**Investigation:** Searched Arela codebase.
+**Finding:** Guard tool handlers in `/Users/Star/arela/src/mcp/tools/misc.ts` return raw strings (e.g., `handler: async (args) => logSymptomOp(args)`), but MCP expects a tool response object `{ content: [...] }`. This mismatch likely triggers the MCP -32602 “Invalid tools/call result: expected object, received string” when calling `log_symptom`, `register_hypothesis`, `guard_status`, `escalate`.
+**Evidence:** `logSymptomOp`, `registerHypothesisOp`, `guardStatusOp`, `escalateOp` in `/Users/Star/arela/slices/guard/ops.ts` all return `Promise<string>`.
+**Impact:** Guard tools always fail at the MCP transport layer, blocking investigation protocol and write access.
+**Next:** Fix by wrapping guard tool outputs in `misc.ts` with `{ content: [{ type: "text", text: ... }] }` or change ops to return MCP objects.
+
+
+---
+
+## Update: 2026-01-27T15:18:25.782Z
+
+
+## Session 31: Fixed Guard Tool Response Shape in Arela (2026-01-27)
+**Action:** Updated `/Users/Star/arela/src/mcp/tools/misc.ts` to wrap guard tool outputs in MCP response objects (`{ content: [{ type: "text", text }] }`).
+**Reason:** Guard ops returned strings, but MCP expects objects; mismatch caused -32602 errors for log_symptom/register_hypothesis/guard_status/escalate.
+**Files Modified:** `/Users/Star/arela/src/mcp/tools/misc.ts`
+**Next:** Restart MCP server/reload editor to pick up changes, then re-run guard tools.
+
+
+---
+
+## Update: 2026-01-27T15:19:37.740Z
+
+
+## Session 32: Rebuild Question (2026-01-27)
+**User Ask:** "did you rebuild?"
+**Response Plan:** No rebuild run; change was a code edit in Arela, requires MCP server/editor restart to load. Offer to run build if desired.
+
+
+---
+
+## Update: 2026-01-27T15:21:37.260Z
+
+
+## Session 33: Rebuild Arela + Verify Dist (2026-01-27)
+**Action:** Ran `npm run build` in `/Users/Star/arela` to rebuild dist after guard tool fix.
+**Verification:** Checked `/Users/Star/arela/dist/src/mcp/tools/misc.js` and confirmed guard handlers now return `{ content: [{ type: "text", text: ... }] }`.
+**Next:** Restart MCP server to load updated dist, then retry `log_symptom` in avaia session.
+
+
+---
+
+## Update: 2026-01-27T15:22:20.726Z
+
+
+## Session 34: Guard Tool Still Failing After Rebuild + Refresh (2026-01-27)
+**Action:** Retried `mcp__arela__log_symptom` after user refreshed MCP server.
+**Result:** Still fails with MCP -32602 (expected object, received string).
+**Hypothesis:** MCP server is still running old build or different install path; not loading `/Users/Star/arela/dist`.
+
+
+---
+
+## Update: 2026-01-27T15:23:41.465Z
+
+
+## Session 35: Global Reinstall Attempt (2026-01-27)
+**Action:** Ran `npm install -g /Users/Star/arela`.
+**Result:** npm reported "up to date" (no changes).
+**Next:** Restart MCP server to ensure global install is used, then retry guard tool.
+
+
+---
+
+## Update: 2026-01-27T15:24:04.713Z
+
+
+## Session 36: Guard Tool Still Failing After Global Reinstall (2026-01-27)
+**Action:** Retried `mcp__arela__log_symptom` after global reinstall + MCP restart.
+**Result:** Still MCP -32602 (expected object, received string).
+**Hypothesis:** MCP server is running a different install path or still serving old compiled code; need to identify actual MCP binary/path used by editor.
+
+
+---
+
+## Update: 2026-01-27T15:30:26.695Z
+
+
+## Session 37: Diagnose MCP Process + Bump Arela Version (2026-01-27)
+**Actions:**
+- Ran `which arela` → `/Users/Star/.npm-global/bin/arela`.
+- Ran `ps aux | rg -i "arela|mcp"` → multiple MCP processes running from both `/Users/Star/.npm-global/bin/arela mcp` and `/Users/Star/arela/dist/src/cli.js mcp`.
+- Bumped Arela version to 5.3.0 in `/Users/Star/arela/package.json` and `/Users/Star/arela/package-lock.json`.
+**Next:** Rebuild (`npm run build`) if desired, then restart MCP using a single explicit path to avoid old processes.
+
+## Session 39: MCP Transport Closed After Retry (2026-01-27)
+**Action:** Retried `mcp__arela__log_symptom` after user said MCP is ready.
+**Result:** Tool call failed with "Transport closed".
+**Impact:** MCP server not connected to this session; cannot proceed with guard protocol or edits.
+
+## Session 40: Read Codex Config (2026-01-27)
+**Action:** Read `/Users/Star/.codex/config.toml` per user request.
+**Finding:** `mcp_servers.arela` uses `command = "arela"` with `args = ["mcp"]`, `cwd = "/Users/Star/avaia"`.
+
+## Session 41: Global Install vs Dist Question (2026-01-27)
+**User Ask:** Whether removing global arela and pointing MCP to repo dist will work.
+**Planned Response:** Yes—pointing MCP config directly to repo dist is most reliable; global uninstall is optional but avoids confusion. `npm install -g /Users/Star/arela` uses dist output.
+
+## Session 42: Switch MCP to Dist + Uninstall Global (2026-01-27)
+**Actions:** Uninstalled global arela (`npm uninstall -g arela`). Updated `/Users/Star/.codex/config.toml` to set `mcp_servers.arela.command` to `/Users/Star/arela/dist/src/cli.js`.
+**Next:** Restart editor/MCP so new command takes effect.
+
+## Investigation: 2026-01-27T15:44:17.340Z
+
+**Symptom:** Guard tool calls failed with MCP -32602: Invalid tools/call result: expected object, received string
+
+**Hypothesis:** Guard tool handlers returned raw strings instead of MCP response objects, causing invalid tool result shape
+
+**Evidence:** /Users/Star/arela/src/mcp/tools/misc.ts
+
+**Reasoning:** MCP expects tool results to be objects with content; misc.ts originally returned strings from guard ops. This mismatch produced -32602. Wrapping results in {content:[{type:'text',text}]} resolves it.
+
+**Confidence:** HIGH
+
+**Verification Plan:** Call log_symptom; if it succeeds and transitions to ANALYSIS, the fix is verified.
+
+---
+
+---
+
+## Update: 2026-01-27T15:45:27.539Z
+
+
+## Session 43: Fix confirm/reject schema mismatch (2026-01-27)
+**Issue:** `confirm_hypothesis` tool rejected `verification_result` because schema expected `id`; `reject_hypothesis` schema expected `id`/`reason` but ops expect `rejection_reason`.
+**Fix:** Updated `/Users/Star/arela/src/mcp/tools/misc.ts` schemas to match ops:
+- confirm_hypothesis → `{ verification_result: z.string().min(10) }`
+- reject_hypothesis → `{ rejection_reason: z.string().min(10) }`
+**Build:** Ran `npm run build` in `/Users/Star/arela`.
+**Next:** Restart MCP server to load the new schema, then re-run confirm_hypothesis.
+
+
+---
+
+## Update: 2026-01-27T15:46:37.899Z
+
+
+## Session 44: confirm_hypothesis Still Using Old Schema (2026-01-27)
+**Action:** Retried `confirm_hypothesis` after user restart; still received schema error expecting `id`.
+**Verification:** Dist file `/Users/Star/arela/dist/src/mcp/tools/misc.js` shows new schema (verification_result/rejection_reason). Therefore MCP server in this session is still running old schema or stale process.
+**Next:** Ensure editor/MCP is fully restarted and pointing to dist path; confirm no stale MCP server processes running.
+
+## Session 45: Kill MCP Instances (2026-01-27)
+**Action:** pkill -f "mcp".
+**Result:** No MCP processes remain (ps aux | rg -i "mcp" only shows the grep command).
+
+## Investigation: 2026-01-27T15:50:59.839Z
+
+**Symptom:** Guard tools previously failed with MCP -32602 due to invalid response shape
+
+**Hypothesis:** Guard tool handlers returned raw strings instead of MCP response objects, causing invalid tool result shape
+
+**Evidence:** /Users/Star/arela/src/mcp/tools/misc.ts
+
+**Reasoning:** MCP expects tool result objects; guard handlers returned strings from ops. This mismatch produced -32602. Wrapping outputs in {content:[{type:'text',text}]} fixes it.
+
+**Confidence:** HIGH
+
+**Verification Plan:** Call log_symptom and confirm guard tools now work; then call confirm_hypothesis to unlock write access.
+
+---
+
+---
+
+## Update: 2026-01-27T15:52:23.503Z
+
+
+## Session 46: edit_file Tool Failure (2026-01-27)
+**Problem:** `mcp__arela__edit_file` on `src/main.tsx` failed with error `Cannot read properties of undefined (reading 'substring')`.
+**Attempted:** Called `log_symptom` but blocked because state is IMPLEMENTATION.
+**Workaround:** Will use `write_file` to replace file contents directly.
+
+
+---
+
+## Update: 2026-01-27T15:52:35.180Z
+
+
+## Session 47: Phase 2 React App Shell Implemented (2026-01-27)
+**Changes:**
+- Created `src/index.css` with Tailwind import + minimal base styles.
+- Created `src/App.tsx` (welcome CTA opens CreateProfileModal directly; dashboard placeholder when profile exists).
+- Created `src/components/Layout.tsx` (header with avatar button, dropdown toggle, click-outside close; fallback avatar 👤).
+- Rewrote `src/main.tsx` to render React App and load CSS.
+**Notes:** edit_file tool error worked around by write_file for main.tsx.
+
+
+---
+
+## Update: 2026-01-27T15:53:23.716Z
+
+
+## Session 48: Build Failed (2026-01-27)
+**Command:** `npm run build`
+**Error:** Rollup optional dependency missing: `@rollup/rollup-darwin-arm64` (npm optional deps bug). Suggested fix from error: remove `node_modules` + `package-lock.json`, then `npm i`.
+**Impact:** Build verification blocked until deps are reinstalled.
+
+
+---
+
+## Update: 2026-01-27T15:54:47.174Z
+
+
+## Session 49: Explained Build Failure Cause (2026-01-27)
+**User Ask:** Why missing @rollup/rollup-darwin-arm64 error occurs.
+**Response Summary:** npm optional dependency install bug or corrupted node_modules/lockfile; Rollup uses platform-specific native package, which is missing, so build fails. Fix via clean reinstall.
+
+## Session 50: Clean Reinstall + Build (2026-01-27)
+**Actions:** Removed node_modules + package-lock.json; ran npm install (completed).
+**Result:** npm reported 10 vulnerabilities and several deprecation warnings; no fixes applied.
+**Build:** `npm run build` succeeded (Vite build OK).

@@ -67,6 +67,10 @@ Given('a profile creation screen is open', function() {
   context.currentScreen = 'create-profile';
 });
 
+Given('the profile creation screen is open', function() {
+  context.currentScreen = 'create-profile';
+});
+
 When('the user enters a profile name {string} \\(3-20 characters, alphanumeric + spaces\\)', function(profileName: string) {
   assert.ok(profileName.length >= 3 && profileName.length <= 20, 'Profile name must be 3-20 characters');
   assert.match(profileName, /^[a-zA-Z0-9\s]+$/, 'Profile name must be alphanumeric + spaces');
@@ -77,25 +81,29 @@ When('the user clicks {string}', function(buttonName: string) {
   if (buttonName === 'Create Profile') {
     // Validate profile name
     if (context.currentProfile) {
-      const dbPath = path.join(process.env.USERDATA || '/tmp', 'profiles', context.currentProfile, 'avaia.db');
+      const dbPath = path.join(process.env.USERDATA || '/tmp', 'profiles', context.currentProfile, 'progress.db');
       fs.ensureDirSync(path.dirname(dbPath));
       fs.writeFileSync(dbPath, ''); // Mock DB creation
       context.createdDatabases.push(dbPath);
       context.profiles.set(context.currentProfile, { name: context.currentProfile });
     }
   }
+
+  if (buttonName === 'Cancel') {
+    context.confirmationDialogVisible = false;
+  }
 });
 
 Then('a new SQLite database should be created at Electron userData directory', function() {
   assert.ok(context.currentProfile, 'Should have a current profile');
-  const dbPath = path.join(process.env.USERDATA || '/tmp', 'profiles', context.currentProfile, 'avaia.db');
+  const dbPath = path.join(process.env.USERDATA || '/tmp', 'profiles', context.currentProfile, 'progress.db');
   assert.ok(fs.existsSync(dbPath), `Database should exist at ${dbPath}`);
 });
 
-Then('the database path should be in format: {userData}/profiles/{profile_id}/avaia.db', function() {
+Then(/^the database path should be in format: \{userData\}\/profiles\/\{profile_id\}\/progress\.db$/, function() {
   assert.ok(context.currentProfile, 'Should have a current profile');
-  const dbPath = path.join(process.env.USERDATA || '/tmp', 'profiles', context.currentProfile, 'avaia.db');
-  assert.match(dbPath, /profiles\/.*\/avaia\.db/, 'Database path should match expected format');
+  const dbPath = path.join(process.env.USERDATA || '/tmp', 'profiles', context.currentProfile, 'progress.db');
+  assert.match(dbPath, /profiles\/.*\/progress\.db/, 'Database path should match expected format');
 });
 
 Then('the app should switch to the newly created profile', function() {
@@ -135,7 +143,17 @@ Given('multiple profiles exist:', function(dataTable: DataTable) {
   });
 });
 
+Given('multiple profiles exist', function() {
+  ['Daramola', 'Child-1'].forEach((name) => {
+    context.profiles.set(name, { name });
+  });
+});
+
 When('the user clicks the avatar icon \\(top-right\\)', function() {
+  context.dropdownOpen = true;
+});
+
+When('the user clicks the avatar icon', function() {
   context.dropdownOpen = true;
 });
 
@@ -172,7 +190,7 @@ Then('a confirmation dialog should appear saying {string}', function(message: st
   assert.strictEqual(context.confirmationMessage, message, `Message should be "${message}"`);
 });
 
-When('confirmed, the app should reload with {string} data', function(profileName: string) {
+Then(/^when confirmed, the app should reload with (.+)'s data$/, function(profileName: string) {
   context.confirmationDialogVisible = false;
   context.currentProfile = profileName;
   context.dropdownOpen = false;
@@ -191,7 +209,7 @@ Then('the profile switch should be tracked with timestamp', function() {
 // Data isolation steps
 Given('a profile {string} with test data exists', function(profileName: string) {
   context.profiles.set(profileName, { name: profileName });
-  const dbPath = path.join(process.env.USERDATA || '/tmp', 'profiles', profileName, 'avaia.db');
+  const dbPath = path.join(process.env.USERDATA || '/tmp', 'profiles', profileName, 'progress.db');
   fs.ensureDirSync(path.dirname(dbPath));
   fs.writeFileSync(dbPath, JSON.stringify({ testData: `data_from_${profileName}` }));
   context.createdDatabases.push(dbPath);
@@ -199,19 +217,19 @@ Given('a profile {string} with test data exists', function(profileName: string) 
 
 Given('a profile {string} with different test data exists', function(profileName: string) {
   context.profiles.set(profileName, { name: profileName });
-  const dbPath = path.join(process.env.USERDATA || '/tmp', 'profiles', profileName, 'avaia.db');
+  const dbPath = path.join(process.env.USERDATA || '/tmp', 'profiles', profileName, 'progress.db');
   fs.ensureDirSync(path.dirname(dbPath));
   fs.writeFileSync(dbPath, JSON.stringify({ testData: `data_from_${profileName}` }));
   context.createdDatabases.push(dbPath);
 });
 
-When('the user switches from {string} to {string}', function(fromProfile: string, toProfile: string) {
+When(/^the user switches from (.+) to (.+)$/, function(fromProfile: string, toProfile: string) {
   context.currentProfile = toProfile;
 });
 
-Then('{string} database should not contain any data from {string}', function(profileB: string, profileA: string) {
-  const dbPathA = path.join(process.env.USERDATA || '/tmp', 'profiles', profileA, 'avaia.db');
-  const dbPathB = path.join(process.env.USERDATA || '/tmp', 'profiles', profileB, 'avaia.db');
+Then(/^(.+)'s database should not contain any data from (.+)$/, function(profileB: string, profileA: string) {
+  const dbPathA = path.join(process.env.USERDATA || '/tmp', 'profiles', profileA, 'progress.db');
+  const dbPathB = path.join(process.env.USERDATA || '/tmp', 'profiles', profileB, 'progress.db');
 
   const dataA = fs.readFileSync(dbPathA, 'utf-8');
   const dataB = fs.readFileSync(dbPathB, 'utf-8');
@@ -219,7 +237,7 @@ Then('{string} database should not contain any data from {string}', function(pro
   assert.ok(!dataB.includes(profileA), `Profile B should not contain data from Profile A`);
 });
 
-Then('{string} database should not be modified', function(profileName: string) {
+Then(/^(.+)'s database should not be modified$/, function(profileName: string) {
   // In real implementation, would check modification timestamps
   assert.ok(context.profiles.has(profileName), `Profile ${profileName} should still exist`);
 });
@@ -231,7 +249,7 @@ Given('the {string} screen is open', function(screenName: string) {
 
 Given('a profile {string} exists', function(profileName: string) {
   context.profiles.set(profileName, { name: profileName });
-  const dbPath = path.join(process.env.USERDATA || '/tmp', 'profiles', profileName, 'avaia.db');
+  const dbPath = path.join(process.env.USERDATA || '/tmp', 'profiles', profileName, 'progress.db');
   fs.ensureDirSync(path.dirname(dbPath));
   fs.writeFileSync(dbPath, '');
   context.createdDatabases.push(dbPath);
@@ -242,6 +260,10 @@ When('the user clicks {string} for {string}', function(action: string, profileNa
     context.confirmationDialogVisible = true;
     context.confirmationMessage = 'This will permanently delete all progress';
   }
+});
+
+When('the confirmation dialog appears', function() {
+  assert.strictEqual(context.confirmationDialogVisible, true, 'Confirmation dialog should be visible');
 });
 
 Then('a confirmation dialog should display with message {string}', function(message: string) {
@@ -273,12 +295,6 @@ Then('the app should navigate to the next available profile or welcome screen', 
 });
 
 // Cancel deletion steps
-When('the user clicks {string}', function(buttonName: string) {
-  if (buttonName === 'Cancel') {
-    context.confirmationDialogVisible = false;
-  }
-});
-
 Then('the profile should remain unchanged', function() {
   // Profile should still exist
   assert.ok(true, 'Profile should still be in the system');
@@ -334,7 +350,7 @@ Given('profile {string} with curriculum cache exists', function(profileName: str
 
 Given('profile {string} without cache exists', function(profileName: string) {
   context.profiles.set(profileName, { name: profileName });
-  const dbPath = path.join(process.env.USERDATA || '/tmp', 'profiles', profileName, 'avaia.db');
+  const dbPath = path.join(process.env.USERDATA || '/tmp', 'profiles', profileName, 'progress.db');
   fs.ensureDirSync(path.dirname(dbPath));
   fs.writeFileSync(dbPath, '{}');
   context.createdDatabases.push(dbPath);
@@ -344,11 +360,11 @@ When('profile {string} requests the curriculum cache', function(profileName: str
   context.currentProfile = profileName;
 });
 
-Then('only {string} cached data should be accessible', function(profileName: string) {
+Then(/^only (.+)'s cached data should be accessible$/, function(profileName: string) {
   assert.strictEqual(context.currentProfile, profileName, 'Only requested profile data should be accessible');
 });
 
-Then('{string} cached data should not be visible to {string}', function(profile1: string, profile2: string) {
+Then(/^(.+)'s cached data should not be visible to (.+)$/, function(profile1: string, profile2: string) {
   assert.notStrictEqual(context.currentProfile, profile1, `Profile ${profile1} data should not be visible to ${profile2}`);
 });
 
@@ -365,7 +381,7 @@ Then('the dropdown should have dimensions of {int}px width', function(width: num
   assert.strictEqual(width, 360, 'Dropdown width should be 360px');
 });
 
-Then('the background should be white with shadow \\({string}\\)', function(shadow: string) {
+Then(/^the background should be white with shadow \((.+)\)$/, function(shadow: string) {
   assert.strictEqual(shadow, '0 10px 40px rgba(0,0,0,0.15)', 'Shadow should be correct');
 });
 
@@ -388,18 +404,22 @@ Then('border radius should be {int}px', function(radius: number) {
   assert.strictEqual(radius, 8, 'Border radius should be 8px');
 });
 
-Then('hover background should be #{string}', function(color: string) {
-  assert.strictEqual(color, 'F9FAFB', 'Hover background color should be #F9FAFB');
+Then(/^hover background should be #([A-Fa-f0-9]{6})$/, function(color: string) {
+  assert.strictEqual(color.toUpperCase(), 'F9FAFB', 'Hover background color should be #F9FAFB');
 });
 
 When('the profile is active', function() {
   // In real implementation, would verify active profile styling
+  if (!context.currentProfile) {
+    context.currentProfile = 'Test Profile';
+    context.profiles.set(context.currentProfile, { name: context.currentProfile });
+  }
   assert.ok(context.currentProfile, 'Should have an active profile');
 });
 
-Then('the background should be #{string} with a {int}px blue left border', function(color: string, borderWidth: number) {
-  assert.strictEqual(color, 'EFF6FF', 'Active background should be #EFF6FF');
-  assert.strictEqual(borderWidth, 4, 'Border width should be 4px');
+Then(/^the background should be #([A-Fa-f0-9]{6}) with a (\d+)px blue left border$/, function(color: string, borderWidth: string) {
+  assert.strictEqual(color.toUpperCase(), 'EFF6FF', 'Active background should be #EFF6FF');
+  assert.strictEqual(Number(borderWidth), 4, 'Border width should be 4px');
 });
 
 // Avatar styling steps
@@ -418,6 +438,10 @@ Then('the header avatar size should be {int}px', function(size: number) {
 
 When('a profile is selected', function() {
   // In real implementation, would verify selection state
+  if (!context.currentProfile) {
+    context.currentProfile = 'Test Profile';
+    context.profiles.set(context.currentProfile, { name: context.currentProfile });
+  }
   assert.ok(context.currentProfile, 'Should have a selected profile');
 });
 

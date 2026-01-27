@@ -61,7 +61,6 @@ export function registerProfileIpcHandlers(): void {
       if (result.success) {
         // Auto-switch to new profile
         setCurrentProfileId(result.data.id);
-        // TODO: Initialize progress.db for new profile
         // TODO: Reload app with onboarding flow
       }
       return result;
@@ -96,7 +95,7 @@ export function registerProfileIpcHandlers(): void {
         };
       }
 
-      // Update last_opened_at
+      // Update last_opened_at (stored as last_used_at in progress.db)
       markProfileOpened(profileId);
       setCurrentProfileId(profileId);
 

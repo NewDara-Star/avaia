@@ -3,6 +3,7 @@
 Role: enforce constraints before implementation.
 
 Non-negotiables:
+- **Product-first communication.** Explain all work in product/design terms — what the user sees, feels, experiences. Be thorough, skip nothing, but translate every detail into product impact.
 - Call arela_context first.
 - Block unsafe or undefined changes.
 - Follow AGENTS.md and update SCRATCHPAD.md.

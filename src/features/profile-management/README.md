@@ -14,12 +14,8 @@ This feature implements a complete profile management system for Avaia v2.0.0, a
 
 ### Database Schema
 
-**profiles.db** (at `{userData}/profiles.db`)
-- Central registry of all profiles and their metadata
-- Minimal: only tracks name, avatar, created_at, last_opened_at, track
-
 Per-profile (at `{userData}/profiles/{profile_id}/`)
-- `progress.db` — isolated learning progress
+- `progress.db` — isolated learning progress + profile metadata (profile table)
 - Shared curriculum from curriculum.db
 
 ### File Structure
@@ -34,7 +30,7 @@ src/features/profile-management/
 ├── hooks/
 │   └── useProfiles.ts        (React hook for state management)
 └── services/
-    ├── profiles-db.ts        (database initialization)
+    ├── progress-db.ts        (progress.db initialization)
     ├── profile-service.ts    (CRUD operations)
     ├── profile-ipc.ts        (Electron IPC handlers)
     └── legacy-import.ts      (v1→v2 migration)
@@ -135,7 +131,7 @@ await window.__mainApi.switchProfile(profileId);
 ## Implementation Checklist
 
 - [x] types.ts — Profile schema & validation
-- [x] profiles-db.ts — Database initialization & schema
+- [x] progress-db.ts — progress.db initialization & schema
 - [x] profile-service.ts — CRUD operations
 - [x] ProfileDropdown.tsx — UI component
 - [x] CreateProfileModal.tsx — UI component

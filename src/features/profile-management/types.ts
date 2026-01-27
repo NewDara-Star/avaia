@@ -46,7 +46,7 @@ export const AvatarEmojiSchema = z.enum([
 ]);
 
 /**
- * Profile metadata stored in profiles.db
+ * Profile metadata stored in progress.db (profile table)
  */
 export type Profile = {
   id: string; // profile_[32-char hex] — canonical format

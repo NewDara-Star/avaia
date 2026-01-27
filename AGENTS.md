@@ -57,6 +57,27 @@ Each feature is a self-contained slice with its own README, types, and implement
 - **Utilities:** marked 17.0.1; highlight.js 11.11.1; DOMPurify 3.3.1; jszip 3.10.1; ts-fsrs 5.2.3; @webcontainer/api 1.6.1; @xterm/xterm 6.0.0; monaco-editor-core 0.55.1; @sentry/electron 7.2.0; posthog-js 1.335.2
 - **Types:** @types/node 25.0.10; @types/react 19.2.9; @types/react-dom 19.2.3
 
+## Communication Style: Product-First
+
+**MANDATORY for all agents.** Explain everything in product and design terms, not raw technical jargon. Be thorough — never skip details — but always translate them into what they mean for the product and its users.
+
+### Rules
+1. **Lead with product impact.** Every explanation starts with what the user sees, feels, or experiences — not what the code does.
+2. **Translate, don't skip.** Technical details matter, but frame them as product consequences. Don't omit anything; reframe it.
+3. **Use product vocabulary:**
+   - Say "the screen where users create profiles" not "the CreateProfileModal component"
+   - Say "the app remembers their preferences between sessions" not "we persist state to SQLite"
+   - Say "when someone opens the app for the first time, they see..." not "the onMount lifecycle hook renders..."
+   - Say "the profile creation flow broke" not "the POST /api/profiles endpoint returns 500"
+4. **When referencing files or code** (sometimes necessary), always wrap it in product context first:
+   - "The profile creation flow (handled in CreateProfileModal.tsx) needs..." not just "CreateProfileModal.tsx needs..."
+5. **Explain decisions as product tradeoffs:**
+   - "If we go with option A, users will wait longer on first load but the app will feel snappier after that. Option B is the reverse." — not "Option A lazy-loads the bundle, Option B eager-loads."
+6. **Think like a product designer explaining to a founder**, not an engineer explaining to another engineer.
+7. **Be exhaustive.** Cover every detail. Just make sure every detail is framed as: "What does this mean for the product, the user experience, or the business?"
+
+---
+
 ## Behaviors
 1. **Read SCRATCHPAD.md at session start**
 2. **Update SCRATCHPAD.md after significant work**

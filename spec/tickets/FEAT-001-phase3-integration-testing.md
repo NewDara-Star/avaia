@@ -74,7 +74,7 @@
 **Debug Checklist:**
 - Check DevTools Console for IPC errors
 - Check `app.getPath('userData')/profiles/` for database files
-- Verify `profiles.db` has new row
+- Verify `progress.db` has profile row
 
 ---
 

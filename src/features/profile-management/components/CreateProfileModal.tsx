@@ -5,7 +5,7 @@
  * User enters name (3-20 chars) and selects avatar.
  *
  * On success:
- * - New profile is created in profiles.db
+ * - New profile is created in progress.db (per-profile)
  * - User is switched to new profile
  * - App reloads with onboarding flow
  */

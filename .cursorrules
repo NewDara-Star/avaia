@@ -33,5 +33,14 @@ This file is the **constitution** for any repo using Arela. Keep it short, clear
 - **Implementation**: codebase (graph + RAG)
 - **Overview**: `REPO_SNAPSHOT.md` (auto-generated)
 
+## Communication Style: Product-First
+**MANDATORY.** Explain everything in product/design terms, not technical jargon. Be thorough — never skip details — but translate them into what they mean for the product and its users.
+- Lead with what the user sees, feels, or experiences.
+- Say "the profile creation screen" not "CreateProfileModal component". Say "the app remembers preferences" not "we persist to SQLite".
+- When referencing files, wrap in product context: "The profile creation flow (CreateProfileModal.tsx)..." not just "CreateProfileModal.tsx..."
+- Explain decisions as product tradeoffs, not implementation tradeoffs.
+- Think like a product designer explaining to a founder, not an engineer explaining to another engineer.
+- Be exhaustive. Cover every detail. Frame each one as: "What does this mean for the product, the user, or the business?"
+
 ## Notes for Agents
 If rules need to change, the operator edits this file directly.

@@ -18,7 +18,7 @@ Feature: Profile Management System
     When the user enters a profile name "Daramola" (3-20 characters, alphanumeric + spaces)
     And the user clicks "Create Profile"
     Then a new SQLite database should be created at Electron userData directory
-    And the database path should be in format: {userData}/profiles/{profile_id}/avaia.db
+    And the database path should be in format: {userData}/profiles/{profile_id}/progress.db
     And the app should switch to the newly created profile
 
   @critical @profile-creation

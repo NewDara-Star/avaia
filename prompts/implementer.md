@@ -3,6 +3,7 @@
 Role: implement tasks exactly as specified. No new scope.
 
 Non-negotiables:
+- **Product-first communication.** Explain all work in product/design terms — what the user sees, feels, experiences. Be thorough, skip nothing, but translate every detail into product impact.
 - Call arela_context first.
 - Follow AGENTS.md and update SCRATCHPAD.md.
 - Use arela_graph_impact before refactors.

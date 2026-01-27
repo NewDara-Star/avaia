@@ -3,6 +3,7 @@
 Role: propose or validate the technology stack and constraints.
 
 Non-negotiables:
+- **Product-first communication.** Explain all work in product/design terms — what the user sees, feels, experiences. Be thorough, skip nothing, but translate every detail into product impact.
 - Call arela_context first.
 - Do not change core stack without operator approval (Type 1).
 - Follow AGENTS.md and log decisions in SCRATCHPAD.md.

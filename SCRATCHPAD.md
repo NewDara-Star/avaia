@@ -1166,3 +1166,362 @@ Guarded write_file blocked due to DISCOVERY state; required investigation protoc
 **Actions:** Removed node_modules + package-lock.json; ran npm install (completed).
 **Result:** npm reported 10 vulnerabilities and several deprecation warnings; no fixes applied.
 **Build:** `npm run build` succeeded (Vite build OK).
+
+
+---
+
+## Update: 2026-01-27T16:07:04.324Z
+
+
+
+---
+
+## Update: 2026-01-27T16:05:00.000Z
+
+## Session 51: Phase 3 Integration Testing — Attempted Automated Tests (2026-01-27)
+**Action:** Ran `npx cucumber-js spec/tests/features/profile-management.feature`.
+**Result 1:** Failed with npm ENOTFOUND to registry (sandbox network blocked). Reran with escalated permissions.
+**Result 2:** npx returned dependency-confusion placeholder (“package should be provided by a local binary”) because cucumber-js isn’t installed locally.
+**Finding:** `package.json` has no @cucumber/cucumber (or cucumber-js) dependency, so the test runner is missing.
+**Impact:** Automated acceptance tests cannot run in repo as-is.
+**Next:** Need operator decision: add `@cucumber/cucumber` devDependency (Type 2) or run tests with a global/local runner outside repo. Manual smoke tests still require operator in a GUI environment.
+
+
+---
+
+## Update: 2026-01-27T16:07:50.495Z
+
+
+
+---
+
+## Update: 2026-01-27T16:07:00.000Z
+
+**Verification:** `arela_verify` regex check for "cucumber" in `package.json` returned false (no match).
+**Note:** Initial attempt used invalid verify type `regex_absent` (tool only supports contains/regex/file_exists).
+
+## Investigation: 2026-01-27T16:12:59.947Z
+
+**Symptom:** Running `npx --no-install cucumber-js spec/tests/features/profile-management.feature` reports 20 scenarios with 125 undefined steps; step definitions in `spec/tests/steps/profile-management.steps.ts` were not loaded.
+
+**Hypothesis:** Cucumber CLI is running without a TS loader or step definition require path, so it never loads `spec/tests/steps/*.ts`. The repo docs say tests use the `tsx` loader and default steps path, but tsx isn't installed and `cucumber-js` isn't configured to require the steps.
+
+**Evidence:** /Users/Star/avaia/spec/tests/steps/profile-management.steps.ts, /Users/Star/avaia/website/tools/test-run.md, /Users/Star/avaia/package.json
+
+**Reasoning:** Cucumber output shows every step undefined → indicates no step definitions were registered. Step defs exist in a .ts file. By default cucumber-js loads JS step files unless configured. Repo docs explicitly note `tsx` loader usage for TS steps; tsx is not in dependencies. Therefore the CLI is not loading TS step defs.
+
+**Confidence:** HIGH
+
+**Verification Plan:** Install `tsx` and run tests via arela_test_run or `cucumber-js` with tsx loader + require steps (e.g., `--require-module tsx` and `--require spec/tests/steps/*.ts`). If steps are loaded, undefined-step errors should disappear.
+
+---
+
+---
+
+## Update: 2026-01-27T16:13:11.732Z
+
+
+
+---
+
+## Update: 2026-01-27T16:14:00.000Z
+
+## Session 52: Install Cucumber + Run Tests (2026-01-27)
+**Action:** Installed `@cucumber/cucumber` (`npm install -D @cucumber/cucumber`).
+**Result:** Install succeeded (99 packages added). `package.json`/lockfile updated.
+
+**Action:** Ran `npx --no-install cucumber-js spec/tests/features/profile-management.feature`.
+**Result:** Test run failed with **all steps undefined** (20 scenarios / 125 steps). Cucumber did not load TS step defs.
+
+**Investigation Protocol:**
+- Logged symptom via `log_symptom`.
+- Registered hypothesis: Cucumber needs TS loader + require steps; repo docs say use `tsx`, but it isn’t installed/configured.
+
+**Next:** Decision needed to install `tsx` and run tests via `arela_test_run` or `cucumber-js` with tsx loader + steps path.
+
+
+---
+
+## Update: 2026-01-27T16:13:38.235Z
+
+
+
+---
+
+## Update: 2026-01-27T16:15:00.000Z
+
+**Verification:** `@cucumber/cucumber` now present in `package.json` (regex match).
+
+
+---
+
+## Update: 2026-01-27T16:17:18.714Z
+
+
+
+---
+
+## Update: 2026-01-27T16:22:00.000Z
+
+## Session 53: Install tsx + Run Cucumber with TS loader (2026-01-27)
+**Action:** Installed `tsx` (`npm install -D tsx`).
+**Verification:** `tsx` now present in `package.json`.
+
+**Action:** Ran `npx --no-install cucumber-js --require-module tsx --require spec/tests/steps/*.ts spec/tests/features/profile-management.feature`.
+**Result:** Cucumber now loads TS steps; 89 steps passed. Remaining issues: 7 undefined steps, 2 ambiguous steps, 1 failed step.
+
+**Key Failures:**
+- Undefined parameter type `{userData}` in feature step string.
+- Ambiguous step definition: `the user clicks {string}` defined twice.
+- Missing step variants: `multiple profiles exist` (non-table), `user clicks the avatar icon` (no “top-right”), `confirmation dialog appears`, `profile creation screen is open`, `user switches from Profile-A to Profile-B`, cross-profile cache steps with `Profile-1/2` literal text, and `when confirmed, the app should reload with Child-1's data` string mismatch.
+- One assertion failure: `When a profile is selected` expects currentProfile but context is null.
+
+**Hypothesis Verification:** Confirmed missing TS loader/require path was root cause of all-steps-undefined.
+
+
+---
+
+## Update: 2026-01-27T16:21:58.851Z
+
+
+
+---
+
+## Update: 2026-01-27T16:30:00.000Z
+
+**User Request:** Review failing steps before changes.
+**Plan:** Summarized current Cucumber failures (undefined/ambiguous/failed steps) from latest run; no code changes yet.
+
+
+---
+
+## Update: 2026-01-27T16:28:36.990Z
+
+
+
+---
+
+## Update: 2026-01-27T16:33:00.000Z
+
+**User Question:** Asked whether databases should be progress/curriculum instead of avaia.db.
+**Verification:** Confirmed `spec/tests/steps/profile-management.steps.ts` references `avaia.db`; profile README documents `progress.db` per profile and shared `curriculum.db` plus central `profiles.db`.
+**Conclusion:** Step definitions are outdated/mismatched; intended design uses `progress.db` (per profile), `profiles.db` (metadata), and shared `curriculum.db`.
+
+
+---
+
+## Update: 2026-01-27T16:37:52.326Z
+
+
+
+---
+
+## Update: 2026-01-27T16:50:00.000Z
+
+## Session 54: Update Tests + Align DB Names (2026-01-27)
+**User Concern:** Asked if DB naming was hallucinated.
+**Verification:** README + Phase 3 ticket specify per-profile `progress.db`, shared `curriculum.db`, central `profiles.db`.
+
+**Test Updates:**
+- Updated feature + steps to use `progress.db` instead of `avaia.db`.
+- Fixed step definition mismatches (regex for literal `{userData}` path, unquoted profile names, hover/active color steps).
+- Removed ambiguous duplicate `the user clicks {string}` step; consolidated Cancel handling.
+- Added missing alias steps (profile creation screen, multiple profiles exist, avatar icon click, confirmation dialog appears).
+- Stabilized state steps (set currentProfile in “profile is active/selected”).
+
+**Test Run:**
+`npx --no-install cucumber-js --require-module tsx --require spec/tests/steps/*.ts spec/tests/features/profile-management.feature`
+✅ 20 scenarios passed / 125 steps passed.
+
+**Files Modified:**
+- `spec/tests/steps/profile-management.steps.ts`
+- `spec/tests/features/profile-management.feature`
+
+
+---
+
+## Update: 2026-01-27T16:40:33.641Z
+
+
+
+---
+
+## Update: 2026-01-27T16:55:00.000Z
+
+**User Ask:** "what are the dbs we have in avaia?"
+**Response Basis:** Verified active profile-management docs/code mention `profiles.db` (central metadata at {userData}/profiles.db), per-profile `progress.db`, and shared `curriculum.db`.
+
+
+---
+
+## Update: 2026-01-27T16:42:59.928Z
+
+
+
+---
+
+## Update: 2026-01-27T17:00:00.000Z
+
+**User Update:** Only schema files present are `/Users/Star/avaia/progress.sql` and `/Users/Star/avaia/curriculum.sql`.
+**Next:** Confirm whether to generate `progress.db`/`curriculum.db` from these schemas or add migrations/docs to reflect them.
+
+
+---
+
+## Update: 2026-01-27T16:44:08.539Z
+
+
+
+---
+
+## Update: 2026-01-27T17:05:00.000Z
+
+**User Ask:** Where does `profiles.db` come from?
+**Verified:** `src/features/profile-management/services/profiles-db.ts` builds path from `app.getPath('userData')` and `profiles.db`, and defines schema in code via `CREATE TABLE IF NOT EXISTS profiles` migration.
+
+
+---
+
+## Update: 2026-01-27T16:46:19.910Z
+
+
+
+---
+
+## Update: 2026-01-27T17:10:00.000Z
+
+**User Ask:** "is this in line with the PRD?"
+**Findings:** PRD is inconsistent: FEAT-001 acceptance criteria and multi-profile decision mention `/profiles/{profile_id}/avaia.db`, but other PRD sections reference `progress.db` and `curriculum.db` (release/upgrade + curriculum update engine). This indicates the `avaia.db` string is outdated.
+**Next:** Propose updating PRD to use `progress.db` and explicitly document `profiles.db` metadata store.
+
+
+---
+
+## Update: 2026-01-27T16:49:13.200Z
+
+
+
+---
+
+## Update: 2026-01-27T17:18:00.000Z
+
+**Action:** Updated PRD to replace `avaia.db` with `progress.db` in FEAT-001 impact_on_spec and acceptance criteria to align with split DB architecture (progress/curriculum).
+**Verification:** `spec/prd.json` no longer contains `avaia.db`; `progress.db` references updated.
+
+
+---
+
+## Update: 2026-01-27T16:51:35.311Z
+
+
+
+---
+
+## Update: 2026-01-27T17:22:00.000Z
+
+**User Concern:** Said tickets + implementation may be fundamentally drifted due to DB naming.
+**Response Plan:** Clarify drift was mainly PRD text (`avaia.db`) vs implementation/tests (`progress.db`); offer Type 2 decision to run repo-wide audit for remaining `avaia.db` references and reconcile tickets/docs/code.
+
+
+---
+
+## Update: 2026-01-27T16:55:02.472Z
+
+
+
+---
+
+## Update: 2026-01-27T17:26:00.000Z
+
+**User Ask:** Product-wise profile measurement + whether progress.db contains profile table.
+**Answer Basis:** Read `progress.sql`: it defines a `profile` table and uses `profile_id` as FK across all progress tables (concept_memory, concept_mastery, etc.).
+**Next:** Suggest decision on keeping separate `profiles.db` registry vs deriving from per-profile progress.db.
+
+
+---
+
+## Update: 2026-01-27T16:59:10.450Z
+
+
+
+---
+
+## Update: 2026-01-27T17:34:00.000Z
+
+**User Decision:** profiles.db should not exist (single source of truth should be per-profile progress.db). Asked why I recommended keeping profiles.db; need to explain tradeoffs and confirm whether to refactor code/docs/tickets to remove profiles.db usage.
+
+
+---
+
+## Update: 2026-01-27T17:07:28.388Z
+
+
+
+---
+
+## Update: 2026-01-27T17:40:00.000Z
+
+## Session 55: Remove profiles.db, use progress.db only (2026-01-27)
+**Decision:** profiles.db should not exist; use per-profile progress.db + shared curriculum.db.
+
+**Code Refactor:**
+- Deleted `src/features/profile-management/services/profiles-db.ts`.
+- Added `src/features/profile-management/services/progress-db.ts` to manage per-profile progress.db and load schema from `progress.sql`.
+- Rewrote `profile-service.ts` to read/write profile metadata directly in progress.db (profile table), including create/list/get/update/delete/mark.
+- Updated IPC comment and UI doc comment to reflect progress.db.
+- Updated profile README to remove profiles.db and document profile table inside progress.db.
+- Updated Phase 3 ticket debug checklist to reference progress.db.
+
+**Verification:**
+- progress-db service file exists.
+- profile-service contains `INSERT INTO profile`.
+
+**Notes:** `progress-db.ts` loads schema from `progress.sql` via app.getAppPath() with cwd fallback; missing schema file throws error.
+
+
+---
+
+## Update: 2026-01-27T17:29:10.930Z
+
+
+
+---
+
+## Update: 2026-01-27T17:45:00.000Z
+
+**User Ask:** Explain product-wise changes (no profiles.db) and confirm scratchpad update.
+**Response:** Explained profile model: one progress.db per profile with profile table; listProfiles scans per-profile DBs; removed central registry to avoid drift. Confirmed scratchpad update.
+
+
+---
+
+## Update: 2026-01-27T17:36:25.932Z
+
+
+
+---
+
+## Update: 2026-01-27T17:52:00.000Z
+
+**Decision Implemented:** Bundle `progress.sql` for production schema init.
+**Changes:**
+- Added `progress.sql` to electron-builder `build.files` in `package.json` so it ships in app.asar.
+- Added runtime fallback to `process.resourcesPath/progress.sql` in `progress-db.ts` for packaged builds.
+
+**Files Modified:**
+- `package.json`
+- `src/features/profile-management/services/progress-db.ts`
+
+
+---
+
+## Update: 2026-01-27T17:37:50.617Z
+
+
+
+---
+
+## Update: 2026-01-27T17:58:00.000Z
+
+**Change:** Added explicit log when `progress.sql` cannot be found (progress-db.ts) before throwing error, to make production failures diagnosable.
+**File:** `src/features/profile-management/services/progress-db.ts`

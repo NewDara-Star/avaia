@@ -21,12 +21,64 @@ import {
   ProfileOperationResult,
   ProfileListItem,
   ProfileNameSchema,
+  AvatarEmojiSchema,
 } from "../types.js";
 import {
   generateProfileId,
-  withProfilesDb,
-  getProfilesDbPath,
-} from "./profiles-db.js";
+  getProfilesRoot,
+  getProgressDbPath,
+  openExistingProgressDb,
+  withProgressDb,
+} from "./progress-db.js";
+
+type ProfileRow = {
+  id: string | null;
+  name: string;
+  avatar_url: string | null;
+  created_at: string | null;
+  last_used_at: string | null;
+  current_track_id: string | null;
+};
+
+function mapProfileRow(row: ProfileRow, fallbackId: string): Profile {
+  const id = row.id ?? fallbackId;
+  const avatar = AvatarEmojiSchema.safeParse(row.avatar_url ?? "🚀");
+
+  return {
+    id,
+    name: row.name,
+    avatar: avatar.success ? avatar.data : "🚀",
+    created_at: row.created_at ?? new Date().toISOString(),
+    last_opened_at: row.last_used_at ?? null,
+    track: row.current_track_id ?? null,
+  };
+}
+
+function readProfileRow(db: any, profileId: string): ProfileRow | null {
+  const rowById = db
+    .prepare(
+      `
+      SELECT id, name, avatar_url, created_at, last_used_at, current_track_id
+      FROM profile
+      WHERE id = ?
+    `
+    )
+    .get(profileId) as ProfileRow | undefined;
+
+  if (rowById) return rowById;
+
+  const rowAny = db
+    .prepare(
+      `
+      SELECT id, name, avatar_url, created_at, last_used_at, current_track_id
+      FROM profile
+      LIMIT 1
+    `
+    )
+    .get() as ProfileRow | undefined;
+
+  return rowAny ?? null;
+}
 
 /**
  * Create a new profile
@@ -35,9 +87,9 @@ import {
  * @returns Success with new Profile or error
  *
  * Side effects:
- * - Creates entry in profiles.db
  * - Creates {userData}/profiles/{profileId}/ directory
- * - Does NOT initialize progress.db (caller's responsibility)
+ * - Initializes progress.db schema
+ * - Inserts profile row into progress.db
  */
 export function createProfile(
   input: CreateProfileInput
@@ -51,55 +103,58 @@ export function createProfile(
     };
   }
 
+  const existingProfiles = listProfiles();
+  if (existingProfiles.some((profile) => profile.name === input.name)) {
+    return {
+      success: false,
+      error: `Profile name "${input.name}" already exists`,
+    };
+  }
+
   const profileId = generateProfileId();
-  const userData = app.getPath("userData");
-  const profileDir = path.join(userData, "profiles", profileId);
+  const profileDir = path.join(app.getPath("userData"), "profiles", profileId);
 
   try {
-    return withProfilesDb((db) => {
-      // Check if name already exists
-      const existing = db
-        .prepare("SELECT id FROM profiles WHERE name = ?")
-        .get(input.name);
-
-      if (existing) {
-        return {
-          success: false,
-          error: `Profile name "${input.name}" already exists`,
-        };
-      }
-
-      // Create profile in database
+    const profile = withProgressDb(profileId, (db) => {
       const now = new Date().toISOString();
-      db.prepare(`
-        INSERT INTO profiles (id, name, avatar, created_at, last_opened_at, track)
-        VALUES (?, ?, ?, ?, NULL, NULL)
-      `).run(profileId, input.name, input.avatar, now);
 
-      // Create profile directory
-      try {
-        fs.mkdirSync(profileDir, { recursive: true });
-      } catch (err) {
-        // If dir creation fails, rollback the database insert
-        db.prepare("DELETE FROM profiles WHERE id = ?").run(profileId);
-        throw err;
-      }
+      db.prepare(
+        `
+        INSERT INTO profile (
+          id,
+          name,
+          avatar_url,
+          created_at,
+          last_used_at,
+          current_track_id,
+          onboarding_complete
+        ) VALUES (?, ?, ?, ?, ?, NULL, FALSE)
+      `
+      ).run(profileId, input.name, input.avatar, now, now);
 
-      const profile: Profile = {
+      return {
         id: profileId,
         name: input.name,
         avatar: input.avatar,
         created_at: now,
-        last_opened_at: null,
+        last_opened_at: now,
         track: null,
-      };
-
-      return {
-        success: true,
-        data: profile,
-      };
+      } as Profile;
     });
+
+    return {
+      success: true,
+      data: profile,
+    };
   } catch (err) {
+    try {
+      if (fs.existsSync(profileDir)) {
+        fs.rmSync(profileDir, { recursive: true, force: true });
+      }
+    } catch {
+      // Ignore cleanup errors
+    }
+
     return {
       success: false,
       error: `Failed to create profile: ${err instanceof Error ? err.message : String(err)}`,
@@ -111,47 +166,65 @@ export function createProfile(
  * List all profiles, sorted by last_opened_at (most recent first)
  */
 export function listProfiles(): ProfileListItem[] {
-  try {
-    return withProfilesDb((db) => {
-      const rows = db
-        .prepare(
-          `
-        SELECT id, name, avatar, created_at, last_opened_at, track
-        FROM profiles
-        ORDER BY last_opened_at DESC, created_at DESC
-      `
-        )
-        .all() as Profile[];
+  const profilesRoot = getProfilesRoot();
+  if (!fs.existsSync(profilesRoot)) return [];
 
-      return rows;
-    });
-  } catch (err) {
-    console.error("Failed to list profiles:", err);
-    return [];
+  const entries = fs.readdirSync(profilesRoot, { withFileTypes: true });
+  const profiles: ProfileListItem[] = [];
+
+  for (const entry of entries) {
+    if (!entry.isDirectory()) continue;
+    const profileId = entry.name;
+    const dbPath = getProgressDbPath(profileId);
+
+    const db = openExistingProgressDb(dbPath);
+    if (!db) continue;
+
+    try {
+      const row = readProfileRow(db, profileId);
+      if (!row) continue;
+      profiles.push(mapProfileRow(row, profileId));
+    } catch (err) {
+      console.error(`Failed to read profile ${profileId}:`, err);
+    } finally {
+      try {
+        db.close();
+      } catch {
+        // ignore close errors
+      }
+    }
   }
+
+  profiles.sort((a, b) => {
+    const aKey = a.last_opened_at ?? a.created_at;
+    const bKey = b.last_opened_at ?? b.created_at;
+    return bKey.localeCompare(aKey);
+  });
+
+  return profiles;
 }
 
 /**
  * Get a specific profile by ID
  */
 export function getProfile(profileId: string): Profile | null {
-  try {
-    return withProfilesDb((db) => {
-      const row = db
-        .prepare(
-          `
-        SELECT id, name, avatar, created_at, last_opened_at, track
-        FROM profiles
-        WHERE id = ?
-      `
-        )
-        .get(profileId) as Profile | undefined;
+  const dbPath = getProgressDbPath(profileId);
+  const db = openExistingProgressDb(dbPath);
+  if (!db) return null;
 
-      return row ?? null;
-    });
+  try {
+    const row = readProfileRow(db, profileId);
+    if (!row) return null;
+    return mapProfileRow(row, profileId);
   } catch (err) {
     console.error("Failed to get profile:", err);
     return null;
+  } finally {
+    try {
+      db.close();
+    } catch {
+      // ignore close errors
+    }
   }
 }
 
@@ -166,36 +239,39 @@ export function updateProfile(
   updates: Partial<Omit<Profile, "id" | "created_at">>
 ): ProfileOperationResult {
   try {
-    return withProfilesDb((db) => {
-      const profile = db
-        .prepare(
-          `
-        SELECT id, name, avatar, created_at, last_opened_at, track
-        FROM profiles
-        WHERE id = ?
-      `
-        )
-        .get(profileId) as Profile | undefined;
+    return withProgressDb(profileId, (db) => {
+      const profileRow = readProfileRow(db, profileId);
 
-      if (!profile) {
+      if (!profileRow) {
         return {
           success: false,
           error: `Profile not found: ${profileId}`,
         };
       }
 
-      // Build update query
       const setClause: string[] = [];
       const values: unknown[] = [];
 
       if (updates.track !== undefined) {
-        setClause.push("track = ?");
+        setClause.push("current_track_id = ?");
         values.push(updates.track);
       }
 
       if (updates.last_opened_at !== undefined) {
-        setClause.push("last_opened_at = ?");
+        setClause.push("last_used_at = ?");
         values.push(updates.last_opened_at);
+      }
+
+      if (updates.avatar !== undefined) {
+        const avatarValidation = AvatarEmojiSchema.safeParse(updates.avatar);
+        if (!avatarValidation.success) {
+          return {
+            success: false,
+            error: `Invalid avatar: ${avatarValidation.error.message}`,
+          };
+        }
+        setClause.push("avatar_url = ?");
+        values.push(updates.avatar);
       }
 
       if (updates.name !== undefined) {
@@ -206,44 +282,42 @@ export function updateProfile(
             error: `Invalid profile name: ${nameValidation.error.message}`,
           };
         }
-        // Check uniqueness
-        const existing = db
-          .prepare("SELECT id FROM profiles WHERE name = ? AND id != ?")
-          .get(updates.name, profileId);
+
+        const existing = listProfiles().find(
+          (profile) => profile.name === updates.name && profile.id !== profileId
+        );
         if (existing) {
           return {
             success: false,
             error: `Profile name "${updates.name}" already exists`,
           };
         }
+
         setClause.push("name = ?");
         values.push(updates.name);
       }
 
       if (setClause.length === 0) {
-        return { success: true, data: profile };
+        return { success: true, data: mapProfileRow(profileRow, profileId) };
       }
 
       values.push(profileId);
 
-      db.prepare(
-        `UPDATE profiles SET ${setClause.join(", ")} WHERE id = ?`
-      ).run(...values);
+      db.prepare(`UPDATE profile SET ${setClause.join(", ")} WHERE id = ?`).run(
+        ...values
+      );
 
-      // Fetch updated profile
-      const updated = db
-        .prepare(
-          `
-        SELECT id, name, avatar, created_at, last_opened_at, track
-        FROM profiles
-        WHERE id = ?
-      `
-        )
-        .get(profileId) as Profile;
+      const updatedRow = readProfileRow(db, profileId);
+      if (!updatedRow) {
+        return {
+          success: false,
+          error: "Failed to read updated profile",
+        };
+      }
 
       return {
         success: true,
-        data: updated,
+        data: mapProfileRow(updatedRow, profileId),
       };
     });
   } catch (err) {
@@ -262,7 +336,6 @@ export function updateProfile(
  * @returns Success or error
  *
  * Side effects:
- * - Removes profile from profiles.db
  * - Deletes {userData}/profiles/{profileId}/ directory recursively
  * - Does NOT update the "current profile" setting (caller's responsibility)
  */
@@ -270,54 +343,32 @@ export function deleteProfile(
   profileId: string,
   confirmationName: string
 ): ProfileOperationResult {
+  const profile = getProfile(profileId);
+  if (!profile) {
+    return {
+      success: false,
+      error: `Profile not found: ${profileId}`,
+    };
+  }
+
+  if (confirmationName !== profile.name) {
+    return {
+      success: false,
+      error: "Profile name mismatch. Deletion cancelled.",
+    };
+  }
+
+  const profileDir = path.join(app.getPath("userData"), "profiles", profileId);
+
   try {
-    return withProfilesDb((db) => {
-      const profile = db
-        .prepare(
-          `
-        SELECT id, name, avatar, created_at, last_opened_at, track
-        FROM profiles
-        WHERE id = ?
-      `
-        )
-        .get(profileId) as Profile | undefined;
+    if (fs.existsSync(profileDir)) {
+      fs.rmSync(profileDir, { recursive: true, force: true });
+    }
 
-      if (!profile) {
-        return {
-          success: false,
-          error: `Profile not found: ${profileId}`,
-        };
-      }
-
-      // Require confirmation (user must re-type profile name)
-      if (confirmationName !== profile.name) {
-        return {
-          success: false,
-          error: "Profile name mismatch. Deletion cancelled.",
-        };
-      }
-
-      // Delete from database first
-      db.prepare("DELETE FROM profiles WHERE id = ?").run(profileId);
-
-      // Delete profile directory
-      const userData = app.getPath("userData");
-      const profileDir = path.join(userData, "profiles", profileId);
-
-      try {
-        if (fs.existsSync(profileDir)) {
-          fs.rmSync(profileDir, { recursive: true, force: true });
-        }
-      } catch (err) {
-        console.error("Failed to delete profile directory:", err);
-        // Non-fatal: database record is already deleted
-      }
-
-      return {
-        success: true,
-        data: profile,
-      };
-    });
+    return {
+      success: true,
+      data: profile,
+    };
   } catch (err) {
     return {
       success: false,
@@ -331,9 +382,9 @@ export function deleteProfile(
  */
 export function markProfileOpened(profileId: string): void {
   try {
-    withProfilesDb((db) => {
+    withProgressDb(profileId, (db) => {
       const now = new Date().toISOString();
-      db.prepare("UPDATE profiles SET last_opened_at = ? WHERE id = ?").run(
+      db.prepare("UPDATE profile SET last_used_at = ? WHERE id = ?").run(
         now,
         profileId
       );
@@ -344,25 +395,22 @@ export function markProfileOpened(profileId: string): void {
 }
 
 /**
- * Check if profiles.db exists (used during app initialization)
+ * Check if any progress.db exists (used during app initialization)
  */
 export function profilesDbExists(): boolean {
-  const dbPath = getProfilesDbPath();
-  return fs.existsSync(dbPath);
+  const profilesRoot = getProfilesRoot();
+  if (!fs.existsSync(profilesRoot)) return false;
+
+  const entries = fs.readdirSync(profilesRoot, { withFileTypes: true });
+  return entries.some((entry) => {
+    if (!entry.isDirectory()) return false;
+    return fs.existsSync(getProgressDbPath(entry.name));
+  });
 }
 
 /**
  * Get the count of profiles (used to detect first launch)
  */
 export function getProfileCount(): number {
-  try {
-    return withProfilesDb((db) => {
-      const result = db
-        .prepare("SELECT COUNT(*) as count FROM profiles")
-        .get() as { count: number };
-      return result.count;
-    });
-  } catch {
-    return 0;
-  }
+  return listProfiles().length;
 }

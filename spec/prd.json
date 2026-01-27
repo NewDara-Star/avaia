@@ -75,7 +75,7 @@
     {
       "question": "Multi-Tenancy: Single-Player or Multi-Profile?",
       "user_answer": "Multi-Profile (like Netflix). Supports families/shared computers. Each profile gets isolated SQLite database.",
-      "impact_on_spec": "Added FEAT-001 (Profile Management). Each profile has separate Electron userData directory (app.getPath('userData'))/profiles/{profile_id}/avaia.db file."
+      "impact_on_spec": "Added FEAT-001 (Profile Management). Each profile has separate Electron userData directory (app.getPath('userData'))/profiles/{profile_id}/progress.db file."
     },
     {
       "question": "Offline Capability?",
@@ -326,7 +326,7 @@
       "user_story": "As a parent with multiple children learning programming, I want to create separate profiles so that each child's progress is isolated and personalized.",
       "acceptance_criteria": [
         "Given the app is opened for the first time, When the user reaches the welcome screen, Then a 'Create Profile' button is prominently displayed",
-        "Given a profile name is entered (3-20 characters, alphanumeric + spaces), When the user clicks 'Create Profile', Then a new SQLite database is created at Electron userData directory (app.getPath('userData'))/profiles/{profile_id}/avaia.db",
+        "Given a profile name is entered (3-20 characters, alphanumeric + spaces), When the user clicks 'Create Profile', Then a new SQLite database is created at Electron userData directory (app.getPath('userData'))/profiles/{profile_id}/progress.db",
         "Given multiple profiles exist, When the user clicks the avatar icon (top-right), Then a dropdown shows all profiles with 'Switch Profile' and 'Manage Profiles' options",
         "Given a profile is selected, When the user clicks 'Switch Profile', Then the app reloads with the selected profile's data (no data leakage between profiles)",
         "Given the 'Manage Profiles' screen is open, When the user clicks 'Delete Profile', Then a confirmation dialog warns 'This will permanently delete all progress' and requires re-typing the profile name to confirm"

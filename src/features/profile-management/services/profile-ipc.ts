@@ -21,8 +21,8 @@ import {
   deleteProfile,
   updateProfile,
   markProfileOpened,
-} from "./profile-service.js";
-import { CreateProfileInput } from "../types.js";
+} from "./profile-service";
+import { CreateProfileInput } from "../types";
 
 /**
  * Store for tracking current profile in main process

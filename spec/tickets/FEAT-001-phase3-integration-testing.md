@@ -30,6 +30,21 @@
 
 ---
 
+## Build Configuration
+
+**Electron Main Process:**
+- Compiles to CommonJS (tsconfig.electron.json: `"module": "CommonJS"`)
+- Uses standard Node.js module resolution (`"moduleResolution": "node"`)
+- This is the standard for Electron apps and required for electron named imports
+
+**React Renderer:**
+- Stays as ESM (handled by Vite)
+- No changes needed
+
+**Why this matters:** Electron's module system expects CommonJS in the main process. The app was previously configured to use ESM everywhere, which caused `SyntaxError: The requested module 'electron' does not provide an export named 'app'` on startup. This has been fixed.
+
+---
+
 ## Technical Tasks
 
 ### Task 3.1: Manual Smoke Test — App Launch

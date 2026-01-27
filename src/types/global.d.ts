@@ -5,7 +5,7 @@
  * in the renderer process.
  */
 
-import type { CreateProfileInput, Profile, ProfileListItem } from "../features/profile-management/types.js";
+import type { CreateProfileInput, Profile, ProfileListItem } from "../features/profile-management/types";
 
 declare global {
   interface Window {

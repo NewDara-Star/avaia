@@ -22,14 +22,14 @@ import {
   ProfileListItem,
   ProfileNameSchema,
   AvatarEmojiSchema,
-} from "../types.js";
+} from "../types";
 import {
   generateProfileId,
   getProfilesRoot,
   getProgressDbPath,
   openExistingProgressDb,
   withProgressDb,
-} from "./progress-db.js";
+} from "./progress-db";
 
 type ProfileRow = {
   id: string | null;

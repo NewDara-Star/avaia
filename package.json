@@ -6,12 +6,13 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc && tsc -p tsconfig.electron.json && vite build",
+    "build": "tsc && tsc -p tsconfig.electron.json && vite build && npm run postbuild",
+    "postbuild": "echo '{\"type\":\"commonjs\"}' > dist/main/package.json && echo '{\"type\":\"commonjs\"}' > dist/renderer/package.json && echo '{\"type\":\"commonjs\"}' > dist/features/package.json",
     "preview": "vite preview",
     "lint": "eslint . --ext ts,tsx",
     "test": "vitest",
     "test:guards": "npm run build",
-    "electron:dev": "electron .",
+    "electron:dev": "npm run build && electron .",
     "electron:build": "electron-builder"
   },
   "dependencies": {

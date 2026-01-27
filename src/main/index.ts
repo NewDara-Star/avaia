@@ -10,13 +10,11 @@
  */
 
 import path from "path";
-import { fileURLToPath } from "url";
 import { app, BrowserWindow } from "electron";
-import { registerProfileIpcHandlers, initializeProfileSystem } from "../features/profile-management/services/profile-ipc.js";
-import { importLegacyDataIfNeeded } from "../features/profile-management/services/legacy-import.js";
+import { registerProfileIpcHandlers, initializeProfileSystem } from "../features/profile-management/services/profile-ipc";
+import { importLegacyDataIfNeeded } from "../features/profile-management/services/legacy-import";
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+// In CommonJS, __filename and __dirname are available as globals
 
 let mainWindow: BrowserWindow | null = null;
 
@@ -41,7 +39,8 @@ function createWindow(): void {
     mainWindow.webContents.openDevTools();
   } else {
     // Production: load from built assets
-    mainWindow.loadFile(path.join(__dirname, "../../dist/index.html"));
+    // __dirname is dist/main, so ../index.html points to dist/index.html
+    mainWindow.loadFile(path.join(__dirname, "../index.html"));
   }
 
   mainWindow.on("closed", () => {

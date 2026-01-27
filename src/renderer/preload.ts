@@ -6,7 +6,7 @@
  */
 
 import { contextBridge, ipcRenderer } from "electron";
-import type { CreateProfileInput, Profile, ProfileListItem } from "../features/profile-management/types.js";
+import type { CreateProfileInput, Profile, ProfileListItem } from "../features/profile-management/types";
 
 /**
  * Expose IPC methods to renderer via window.__mainApi

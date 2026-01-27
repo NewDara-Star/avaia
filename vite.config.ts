@@ -4,9 +4,11 @@ import tailwindcss from '@tailwindcss/vite';
 import path from 'path';
 
 export default defineConfig({
+  base: './',
   plugins: [react(), tailwindcss()],
   build: {
     outDir: 'dist',
+    emptyOutDir: false,
     sourcemap: true,
     target: 'esnext',
     rollupOptions: {

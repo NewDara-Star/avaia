@@ -1,40 +1,12 @@
-# AGENTS.md
+# AGENTS.md - Arela v5
 
-## Purpose
-This file is the **constitution** for any repo using Arela. Keep it short, clear, and stable.
+## What This Project Is
+Arela is **The AI's Memory Layer for Vibecoding** - a minimal MCP-based system that solves context persistence for natural language software development.
 
-## Operating Rules (Minimal)
-1. **Read** `SCRATCHPAD.md` at session start.
-2. **Update** `SCRATCHPAD.md` after significant work.
-3. **Use Arela tools first**:
-   - Search → `arela_vector_search`
-   - Refactor → `arela_graph_impact`
-   - Facts → `arela_verify`
-4. **Investigation protocol** (when there’s a failure):
-   - Log symptom → register hypothesis → verify → confirm/reject.
-   - Document root cause in `SCRATCHPAD.md`.
-5. **Decision discipline**:
-   - Label choices **Type 1** or **Type 2**.
-   - Ask the operator at decision points.
-6. **Refactor over rewrite**:
-   - Extend existing files unless truly unsalvageable.
-7. **Documentation mandate**:
-   - Every new feature/tool must have docs in `website/`.
-8. **Ticket format**:
-   - Include context, task, acceptance criteria, files, and mandatory report.
-9. **Blameless root-cause format**:
-   - Focus on system fixes, not people.
-10. **Strict no‑action without confirmation**:
-   - If unsure, stop and ask the operator.
-11. **Verify each step** before stating completion (tests / `arela_checklist` when relevant).
-
-## Source of Truth
-- **Intent**: `spec/prd.json` + `spec/stack.json`
-- **Implementation**: codebase (graph + RAG)
-- **Overview**: `REPO_SNAPSHOT.md` (auto-generated)
-
-## Notes for Agents
-If rules need to change, the operator edits this file directly.
+## How to Use AGENTS.md (Operator)
+- This file is **written by you** to control agent behavior.
+- Keep it short and direct; if you want a rule to change, change it here.
+- Agents must treat this file as a binding contract.
 
 ## Product POV (for the Operator)
 Arela turns your product intent into an executable workflow:
@@ -46,6 +18,11 @@ Arela turns your product intent into an executable workflow:
 ## Architecture: Vertical Slice Architecture (VSA)
 Each feature is a self-contained slice with its own README, types, and implementation.
 
+```
+slices/
+├── context/    # AGENTS.md + SCRATCHPAD.md management
+└── memory/     # Session persistence logic
+```
 
 ## Tech Stack (Non-Negotiable)
 - **Language/Core:** TypeScript 5.9.3; Node 24.13.0 (LTS); npm 10.9.4

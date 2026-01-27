@@ -766,3 +766,14 @@ arela_graph_impact types.ts
 **User Ask:** Wants lighter-weight CLI commands than `arela init`.
 **Finding:** Arela CLI already provides `graph refresh` and `vector reindex` subcommands in `/Users/Star/arela/src/cli.ts`.
 **Planned Response:** Use `arela graph refresh` (graph only) and `arela vector reindex` (RAG only); optional `arela vector search <query>` and `arela status`.
+
+
+---
+
+## Update: 2026-01-27T14:11:02.716Z
+
+
+## Session 15: Update Tech Stack Section (2026-01-27)
+**User Ask:** Update tech stack section to match spec/stack.json.
+**Action:** Replaced outdated stack entries in `AGENTS.md` and `Rules.md` with the actual stack (TypeScript 5.9.3, Node 24.13.0, Electron 40, React 19.2.3, Vite 7.1.9, Tailwind 4.1.18, better-sqlite3 12.6.2, Zod 4.3.6, Vitest 3.2.4, ESLint 9.35.0, plus listed utilities/types).
+**Note:** `.claude/CLAUDE.md` does not currently contain a Tech Stack section; can mirror if desired.

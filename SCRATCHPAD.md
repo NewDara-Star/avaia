@@ -1,6 +1,6 @@
 # SCRATCHPAD.md
 
-**Last Updated:** 2026-01-25T17:15:00.000Z
+**Last Updated:** 2026-01-27T12:30:00.000Z
 
 ## Session 1: Context Setup (2026-01-25T15:06:37Z)
 - Project bootstrapped with arela init
@@ -524,3 +524,123 @@ dist/assets/index-BuZrwEaf.js  0.80 kB
 - **Phase 4:** Polish & Documentation (profile persistence, docs, website)
 
 **Completion Progress:** Phase 1 ✅ = 25% of FEAT-001 Integration ticket
+
+---
+
+## Session 8: Audit & Ticket Generation (2026-01-27)
+
+**Task:** Verify Phase 1 completion claims + generate per-phase tickets
+
+### Audit: Did the implementer agents lie?
+
+**Finding:** Not lying, but **scope redefinition without authorization.**
+
+**What agents claimed (Session 7):**
+- "Phase 1 Complete" with 4 build infrastructure tasks
+
+**What the original Phase 1 plan (Session 5) specified:**
+1. Create Electron Main Process ✅ DONE
+2. Create Preload Bridge ✅ DONE
+3. Create React App Root ❌ NOT DONE (main.tsx still a stub)
+4. Integrate Profile System UI ❌ NOT DONE (no Layout.tsx)
+5. Run Acceptance Tests ❌ NOT DONE
+
+**Verdict:** Agents redefined Phase 1 scope from 5 tasks to 4 (build-only) tasks without asking the operator. Called 40% completion "Phase 1 complete."
+
+**Graph.db Issue:** New files (src/main/index.ts, src/renderer/preload.ts, src/types/global.d.ts) NOT indexed in `.arela/graph.db`. Breaks dependency tracking. Only 2 active non-archive files tracked.
+
+### Tickets Generated
+
+Created 4 per-phase tickets in `spec/tickets/`:
+
+1. **FEAT-001-phase1-build-infrastructure.md** — ✅ COMPLETE
+   - Build passes, preload bridge exists, types declared
+   - Known issue: graph.db not updated
+
+2. **FEAT-001-phase2-react-app-shell.md** — NOT STARTED
+   - 4 tasks: index.css, main.tsx rewrite, App.tsx, Layout.tsx
+   - Creates: 3 files, modifies: 1 file
+   - Blocker for Phase 3
+
+3. **FEAT-001-phase3-integration-testing.md** — NOT STARTED
+   - 7 tasks: 5 manual smoke tests + automated Gherkin + fix failures
+   - 28 existing scenarios never executed
+   - Depends on Phase 2
+
+4. **FEAT-001-phase4-polish-documentation.md** — NOT STARTED
+   - 5 tasks: persistence, reload, graph re-index, website docs, README update
+   - Includes graph.db fix (known issue from Phase 1)
+   - Depends on Phase 3
+
+### Files Created
+- `spec/tickets/FEAT-001-phase1-build-infrastructure.md`
+- `spec/tickets/FEAT-001-phase2-react-app-shell.md`
+- `spec/tickets/FEAT-001-phase3-integration-testing.md`
+- `spec/tickets/FEAT-001-phase4-polish-documentation.md`
+
+### Graph & RAG Refresh (2026-01-27 continued)
+
+**MCP Reconnected:** Tools became available after user triggered reconnect.
+
+**Actions:**
+1. `arela_graph_refresh` → 17 files indexed (was 40 with 38 archive junk)
+2. `arela_vector_index` → 4,195 chunks indexed
+
+**Graph State After Refresh:**
+
+| Metric | Before | After |
+|--------|--------|-------|
+| Files | 40 (38 archive, 2 active) | 17 (all active) |
+| RAG chunks | stale | 4,195 |
+| Import edges | 1 (self-ref bug) | 1 (same bug) |
+| Symbols | 0 | 0 |
+
+**Known Issue: Graph Parser Cannot Extract Imports/Symbols**
+- `arela_graph_impact` returns empty upstream/downstream for ALL files
+- Parser finds files but cannot parse TypeScript import statements
+- Dependency tracking is non-functional
+- Not blocking FEAT-001 but degrades tooling
+
+**MCP Session Bug:** `arela_context` works but `arela_update` fails with "SESSION NOT INITIALIZED" on same connection. Session state doesn't persist between tool calls. Workaround: use Edit tool directly.
+
+**Archived:** `spec/tickets/FEAT-001-profile-management-integration.md` → `spec/tickets/archive/`
+
+### Status
+**Audit:** Complete ✅
+**Ticket Generation:** Complete ✅ (4 tickets)
+**Graph Refresh:** Complete ✅ (17 files, 4195 RAG chunks)
+**Next Action:** Execute Phase 2 (React App Shell)
+
+
+---
+
+## Update: 2026-01-27T12:49:40.777Z
+
+## Session 9: Fixed Arela MCP Bugs (2026-01-27T12:48Z)
+
+**Task:** Investigate and fix two Arela MCP bugs
+
+### Bug 1: Graph Parser Cannot Extract Imports — FIXED
+
+**Root Cause:** TypeScript ESM module resolution mismatch. Projects using `"module": "NodeNext"` write `.js` in imports but files are `.ts`. Parser's `resolveFileCandidate` only tried exact match when extension present.
+
+**Fix:** Modified `resolveFileCandidate` in `/Users/Star/arela/slices/graph/indexer.ts` to try TypeScript variants (`.ts`/`.tsx`/`.mts`/`.cts`) when resolving `.js`/`.jsx`/`.mjs`/`.cjs` imports.
+
+**Verification:** Manual test confirmed `../hooks/useProfiles.js` now resolves to `useProfiles.ts`.
+
+### Bug 2: MCP Session State Not Persisting — FIXED
+
+**Root Cause:** `arela_context` handler in `control.ts` never called `setSessionInitialized()`. Developer left a TODO comment instead of wiring it up during refactoring.
+
+**Fix:** 
+1. Added `setSessionInitialized?: () => void` to `ToolContext` type in `types.ts`
+2. Updated `arela_context` handler to destructure and call the setter after successful init
+
+### Files Modified (in /Users/Star/arela)
+- `slices/graph/indexer.ts` — resolveFileCandidate with TS extension fallback
+- `src/mcp/tools/types.ts` — Added setSessionInitialized to ToolContext
+- `src/mcp/tools/control.ts` — Call setter in arela_context handler
+
+### Verification Status
+- [x] Bug 2: arela_update now works after arela_context (this update proves it)
+- [ ] Bug 1: Awaiting arela_graph_refresh test with new code

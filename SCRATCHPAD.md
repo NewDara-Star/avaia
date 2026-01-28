@@ -1953,3 +1953,86 @@ These tell Node.js to treat files in those directories as CommonJS, even though 
 1. FEAT-001 P3: Manual smoke tests (creation, switching, deletion, data isolation)
 2. FEAT-001 P4: Profile persistence across restarts + documentation
 3. Begin FEAT-002 P1: API key storage backend
+
+---
+
+## Update: 2026-01-28T21:12:25.378Z
+
+## Session 62: Phase 3 Integration Testing - Manual Smoke Tests (2026-01-28)
+
+**Task:** Execute Phase 3 manual smoke tests for profile management system.
+
+### Test Results
+
+**✅ Automated Tests: PASS**
+- Command: `npx cucumber-js --require-module tsx --require 'spec/tests/steps/profile-management.steps.ts' spec/tests/features/profile-management.feature`
+- Result: 20 scenarios (20 passed) / 125 steps (125 passed)
+- Time: 0.026s
+- Note: Must use specific step file path, not wildcard `*.ts`, to avoid loading api-key-onboarding.steps.ts which has a Cucumber expression syntax error
+
+**✅ Task 3.1 - App Launch: PASS (with bug fix)**
+
+**Initial State:**
+- App launched successfully
+- React UI rendering correctly
+- Profile dropdown working
+- Multiple profiles visible (fdfddt, Primary, Daramola, dara)
+
+**Bug Found:** Header avatar showed 👶 but current profile "fdfddt" had 💡. Avatar didn't match active profile.
+
+**Root Cause Investigation:**
+- Terminal showed: `Loaded profile: dara (profile_52064f580394b8fbef8d9cba19859e8e)`
+- But UI showed "fdfddt" with checkmark as current
+- Tested profile switching - dropdown closed but avatar didn't update
+- Found TODO at `profile-ipc.ts:102-103`: "TODO: Reload app window"
+- Profile switch updated backend state but renderer never refreshed
+
+**Fix Applied:**
+- Modified `src/features/profile-management/services/profile-ipc.ts`:
+  - Added `BrowserWindow` import from electron
+  - Changed `profile:switch` handler to reload window after switch:
+    ```typescript
+    const win = BrowserWindow.fromWebContents(event.sender);
+    if (win) {
+      win.reload();
+    }
+    ```
+  - Added console log: `Switched to profile: ${profile.name} (${profileId})`
+
+**Product Impact:**
+- Before: Backend switched profiles but UI stayed stale (wrong avatar in header)
+- After: App reloads when switching profiles, avatar and all state updates correctly
+
+**Verification:** User confirmed avatar now updates correctly when switching profiles.
+
+**Files Modified:**
+- `src/features/profile-management/services/profile-ipc.ts` (added window reload on profile switch)
+
+**Bug Fix for FEAT-002 Tests:**
+- Fixed Cucumber expression syntax error in `spec/tests/steps/api-key-onboarding.steps.ts:677`
+- Changed: `'the key should be displayed masked (e.g. {string})'`
+- To: `'the key should be displayed masked \\(e.g. {string}\\)'`
+- Reason: Parentheses in Cucumber expressions define optional groups, which can't contain parameter types. Must escape with backslashes.
+
+### Manual Tests Progress
+
+**Completed:**
+- [x] Task 3.1: App Launch
+
+**Pending:**
+- [ ] Task 3.2: Profile Creation (name validation, avatar picker, IPC success, dropdown update)
+- [ ] Task 3.3: Profile Switching (create 2+ profiles, verify switch updates avatar)
+- [ ] Task 3.4: Data Isolation (verify separate progress.db files per profile)
+- [ ] Task 3.5: Profile Deletion (confirmation dialog, name re-typing, profile removal)
+
+### Session Status
+
+**Current State:** Paused during Task 3.2 setup. App is built and running correctly. User taking a break.
+
+**Next Steps:** Resume with Task 3.2 profile creation test when user returns.
+
+**Build Status:** ✅ `npm run build` passes (413ms)
+
+**Known Issues:**
+- api-key-onboarding.steps.ts cannot be loaded with wildcard require (now fixed)
+- Must use specific step file paths when running Cucumber tests

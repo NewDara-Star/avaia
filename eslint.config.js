@@ -1,4 +1,6 @@
 import js from "@eslint/js";
+import tsParser from "@typescript-eslint/parser";
+import tsPlugin from "@typescript-eslint/eslint-plugin";
 
 export default [
   {
@@ -16,10 +18,16 @@ export default [
   },
   js.configs.recommended,
   {
-    files: ["src/**/*.{ts,tsx,js}"],
+    files: ["src/**/*.{ts,tsx}"],
     languageOptions: {
-      ecmaVersion: "latest",
-      sourceType: "module",
+      parser: tsParser,
+      parserOptions: {
+        ecmaVersion: "latest",
+        sourceType: "module",
+        ecmaFeatures: {
+          jsx: true,
+        },
+      },
       globals: {
         // Browser globals
         window: "readonly",
@@ -32,14 +40,27 @@ export default [
         Buffer: "readonly",
         __dirname: "readonly",
         __filename: "readonly",
+        module: "readonly",
+        require: "readonly",
       },
+    },
+    plugins: {
+      "@typescript-eslint": tsPlugin,
     },
     rules: {
       "no-unused-vars": "off",
+      "@typescript-eslint/no-unused-vars": "off",
       "no-constant-condition": "off",
       "no-cond-assign": "off",
       "no-undef": "off",
       "no-empty": "off",
+    },
+  },
+  {
+    files: ["src/**/*.js"],
+    languageOptions: {
+      ecmaVersion: "latest",
+      sourceType: "module",
     },
   },
 ];

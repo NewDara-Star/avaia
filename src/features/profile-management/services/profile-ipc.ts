@@ -13,7 +13,7 @@
  * - profile:update
  */
 
-import { ipcMain } from "electron";
+import { ipcMain, BrowserWindow } from "electron";
 import {
   createProfile,
   listProfiles,
@@ -85,7 +85,7 @@ export function registerProfileIpcHandlers(): void {
   });
 
   // Switch profile
-  ipcMain.handle("profile:switch", async (_event, profileId: string) => {
+  ipcMain.handle("profile:switch", async (event, profileId: string) => {
     try {
       const profile = getProfile(profileId);
       if (!profile) {
@@ -99,8 +99,13 @@ export function registerProfileIpcHandlers(): void {
       markProfileOpened(profileId);
       setCurrentProfileId(profileId);
 
-      // TODO: Close active session, load new profile data
-      // TODO: Reload app window
+      console.log(`Switched to profile: ${profile.name} (${profileId})`);
+
+      // Reload the renderer window to load new profile data
+      const win = BrowserWindow.fromWebContents(event.sender);
+      if (win) {
+        win.reload();
+      }
 
       return { success: true };
     } catch (err) {

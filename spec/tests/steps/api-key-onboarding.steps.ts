@@ -674,7 +674,7 @@ Then('the connection status should show {string} with a green indicator', functi
   assert.strictEqual(ctx.connectionStatus, 'connected');
 });
 
-Then('the key should be displayed masked (e.g. {string})', function (example: string) {
+Then('the key should be displayed masked \\(e.g. {string}\\)', function (example: string) {
   assert.ok(ctx.maskedKey, 'Masked key should exist');
   assert.ok(ctx.maskedKey!.includes('****'), 'Key should be masked');
   assert.ok(!ctx.maskedKey!.includes(ctx.savedApiKey!.substring(10)), 'Should not reveal full key');
